@@ -1,0 +1,1 @@
+{"name":"错题本","appid":"","description":"跨平台错题本","versionName":"0.1.0","versionCode":"1","transformPx":false,"h5":{"router":{"mode":"hash","base":"./"},"devServer":{"port":5173},"template":""},"mp-weixin":{"appid":"","setting":{"urlCheck":false,"es6":true}},"app-plus":{"usingComponents":true}}

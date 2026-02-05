@@ -1,0 +1,20 @@
+{
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationBarTitleText": "错题本" } },
+    { "path": "pages/subjects/list", "style": { "navigationBarTitleText": "科目管理" } },
+    { "path": "pages/subjects/edit", "style": { "navigationBarTitleText": "编辑科目" } },
+    { "path": "pages/chapters/list", "style": { "navigationBarTitleText": "章节管理" } },
+    { "path": "pages/chapters/edit", "style": { "navigationBarTitleText": "编辑章节" } },
+    { "path": "pages/questions/list", "style": { "navigationBarTitleText": "错题列表" } },
+    { "path": "pages/questions/detail", "style": { "navigationBarTitleText": "错题详情" } },
+    { "path": "pages/questions/add", "style": { "navigationBarTitleText": "拍照添加" } },
+    { "path": "pages/review/index", "style": { "navigationBarTitleText": "每日复习" } },
+    { "path": "pages/import/pdf", "style": { "navigationBarTitleText": "导入PDF" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "错题本",
+    "navigationBarBackgroundColor": "#f8f8f8",
+    "backgroundColor": "#f8f8f8"
+  }
+}
