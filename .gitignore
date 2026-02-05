@@ -1,0 +1,50 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# 环境与密钥
+.env
+.env.local
+*.pem
+
+# 后端上传目录
+apps/api/uploads/
+
+# Node / 前端
+node_modules/
+apps/web-mobile/node_modules/
+.npm
+*.log
+npm-debug.log*
+
+# 构建产物（可选，若需提交部署产物可删除对应行）
+apps/web-mobile/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 测试与覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# uni-app 打包缓存（若有）
+apps/web-mobile/unpackage/
