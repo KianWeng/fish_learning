@@ -1,4 +1,3 @@
-import base64
 from datetime import date
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,13 +23,12 @@ async def upload_image(file: UploadFile = File(...)):
 
 @router.post("/image/analyze")
 async def upload_and_analyze(file: UploadFile = File(...)):
-    """上传错题图片并调用大模型分析，返回图片 URL 与题目/解析/答案。"""
+    """上传错题图片并分析（Coze 工作流优先，否则 OpenAI），返回图片 URL 与题目/解析/答案。"""
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
     path = save_upload_file(content, file.filename or "image.jpg", "images")
-    b64 = base64.b64encode(content).decode("utf-8")
-    result = await analyze_question_image(b64)
+    result = await analyze_question_image(image_bytes=content)
     return {"url": path, "content": result["content"], "analysis": result["analysis"], "answer": result["answer"]}
 
 

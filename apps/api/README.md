@@ -21,6 +21,18 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 API 文档: http://localhost:8000/docs
 
+## 测试 Coze 工作流
+
+配置好 `.env` 中的 `COZE_API_KEY` 和 `COZE_WORKFLOW_ID` 后，可运行：
+
+```bash
+cd apps/api
+.venv/bin/python scripts/test_coze.py                  # 使用内置最小测试图（测连通性）
+.venv/bin/python scripts/test_coze.py path/to/图.jpg  # 使用本地错题图片
+```
+
+脚本会依次执行：上传图片 -> 调用工作流 -> 解析 JSON 输出，并打印各步结果。
+
 ## 数据库迁移
 
 （在已激活的虚拟环境中，或使用 `.venv/bin/python -m alembic`）
