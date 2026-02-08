@@ -24,6 +24,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { listQuestions } from '@/api/questions.js'
+import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 
 const subjectId = ref(0)
 const chapterId = ref(0)
@@ -48,10 +49,23 @@ function goDetail(id) {
   uni.navigateTo({ url: `/pages/questions/detail?id=${id}` })
 }
 
-function goAdd() {
-  uni.navigateTo({
-    url: `/pages/questions/add?subject_id=${subjectId.value}&chapter_id=${chapterId.value}&subject_name=${encodeURIComponent(subjectName.value)}&chapter_name=${encodeURIComponent(chapterName.value)}`
+function openCameraThenCrop() {
+  uni.chooseImage({
+    count: 1,
+    sourceType: ['camera'],
+    success: (res) => {
+      setSourcePath(res.tempFilePaths[0])
+      uni.navigateTo({ url: '/pages/common/image-crop' })
+    }
   })
+}
+
+function goAdd() {
+  openCameraThenCrop()
+}
+
+function addPageUrl() {
+  return `/pages/questions/add?subject_id=${subjectId.value}&chapter_id=${chapterId.value}&subject_name=${encodeURIComponent(subjectName.value)}&chapter_name=${encodeURIComponent(chapterName.value)}`
 }
 
 function initFromOptions() {
@@ -73,6 +87,9 @@ onMounted(() => {
 onShow(() => {
   initFromOptions()
   load()
+  if (getResultPath()) {
+    uni.navigateTo({ url: addPageUrl() })
+  }
 })
 </script>
 

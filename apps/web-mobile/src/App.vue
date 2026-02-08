@@ -1,9 +1,15 @@
-<script setup>
+<script>
+export default {
+  name: 'App',
+  // Options API 便于小程序框架正确挂载 getApp().$vm，减轻真机栈溢出
+}
 </script>
 
 <template>
   <view class="app">
-    <page-meta :root-font-size="16" />
+    <!-- #ifdef H5 -->
+    <page-meta root-font-size="16" />
+    <!-- #endif -->
     <slot />
   </view>
 </template>

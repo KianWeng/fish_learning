@@ -8,7 +8,7 @@
       <text class="icon">📚</text>
       <text class="label" :class="{ active: current === 'questions' }">错题本</text>
     </view>
-    <view class="item center" @click="go('/pages/questions/add')">
+    <view class="item center" @click="go('/pages/questions/list?openCamera=1')">
       <view class="camera-btn">
         <text class="camera-icon">📷</text>
       </view>

@@ -1,12 +1,12 @@
 <template>
   <view class="page">
-    <view class="section" v-if="!result">
-      <button class="btn primary" @click="chooseImage">选择照片 / 拍照</button>
-      <view class="tip">将自动识别题目并生成解析与答案</view>
+    <view class="section empty-section" v-if="!result">
+      <text class="empty-tip">请从错题本或章节页点击 + 拍照添加错题</text>
+      <button class="btn default" @click="goBack">返回</button>
     </view>
     <view class="section" v-else>
-      <view class="preview" v-if="result.url">
-        <image :src="imageFullUrl" mode="widthFix" class="img" />
+      <view class="preview" v-if="previewImageUrl">
+        <image :src="previewImageUrl" mode="widthFix" class="img" />
       </view>
       <view class="field">
         <text class="label">题目</text>
@@ -45,12 +45,14 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
 import { listSubjects, createSubject } from '@/api/subjects.js'
 import { listChapters } from '@/api/chapters.js'
 import { uploadAndAnalyzeImage, createQuestion } from '@/api/questions.js'
+import { setSourcePath, getResultPath, clear } from '@/utils/crop-store.js'
 
 const result = ref(null)
 const form = ref({ content: '', analysis: '', answer: '', image_url: '', subject_id: 0, chapter_id: null })
@@ -66,9 +68,12 @@ const createBookMode = ref(false)
 const bookName = ref('')
 
 const imageFullUrl = ref('')
+/** 本地裁剪图路径（识别界面上展示用户裁剪的那张图） */
+const croppedImagePath = ref('')
 watch(() => result.value?.url, (url) => {
   if (url) imageFullUrl.value = url.startsWith('http') ? url : API_BASE_URL + url
 }, { immediate: true })
+const previewImageUrl = computed(() => croppedImagePath.value || imageFullUrl.value)
 
 async function loadSubjects() {
   try {
@@ -118,36 +123,59 @@ function onChapterChange(e) {
 }
 
 function chooseImage() {
+  openCameraOrAlbum(['album', 'camera'])
+}
+
+/** 仅拍照，用于 openCamera=1 时直接打开相机 */
+function openCameraOnly() {
+  openCameraOrAlbum(['camera'])
+}
+
+function openCameraOrAlbum(sourceType) {
   uni.chooseImage({
     count: 1,
-    sourceType: ['album', 'camera'],
-    success: async (res) => {
+    sourceType,
+    success: (res) => {
       const path = res.tempFilePaths[0]
-      uni.showLoading({ title: '识别中...' })
-      try {
-        const data = await uploadAndAnalyzeImage(path)
-        uni.hideLoading()
-        result.value = data
-        form.value.content = data.content || ''
-        form.value.analysis = data.analysis || ''
-        form.value.answer = data.answer || ''
-        form.value.image_url = data.url || ''
-      } catch (e) {
-        uni.hideLoading()
-        uni.showToast({ title: e.message || '上传或识别失败', icon: 'none' })
-      }
+      setSourcePath(path)
+      uni.navigateTo({ url: '/pages/common/image-crop' })
     }
   })
 }
 
+async function useCroppedImage(croppedPath) {
+  if (!croppedPath) return
+  croppedImagePath.value = croppedPath
+  uni.showLoading({ title: '识别中...' })
+  try {
+    const data = await uploadAndAnalyzeImage(croppedPath)
+    uni.hideLoading()
+    result.value = data
+    form.value.content = data.content || ''
+    form.value.analysis = data.analysis || ''
+    form.value.answer = data.answer || ''
+    form.value.image_url = data.url || ''
+  } catch (e) {
+    uni.hideLoading()
+    uni.showToast({ title: e.message || '上传或识别失败', icon: 'none' })
+  } finally {
+    clear()
+  }
+}
+
 function reset() {
   result.value = null
+  croppedImagePath.value = ''
   form.value = { content: '', analysis: '', answer: '', image_url: '', subject_id: 0, chapter_id: null }
   subjectId.value = 0
   subjectName.value = ''
   chapterId.value = null
   chapterName.value = ''
   if (createBookMode.value) bookName.value = ''
+}
+
+function goBack() {
+  uni.navigateBack()
 }
 
 async function submit() {
@@ -200,6 +228,11 @@ async function submit() {
   }
 }
 
+onShow(() => {
+  const croppedPath = getResultPath()
+  if (croppedPath) useCroppedImage(croppedPath)
+})
+
 onMounted(async () => {
   const pages = getCurrentPages()
   const page = pages[pages.length - 1]
@@ -230,6 +263,8 @@ onMounted(async () => {
 .primary { background: #07c160; color: #fff; border: none; }
 .default { background: #f0f0f0; color: #333; border: none; }
 .tip { font-size: 24rpx; color: #999; margin-top: 16rpx; }
+.empty-section { text-align: center; padding: 48rpx 32rpx; }
+.empty-tip { display: block; font-size: 28rpx; color: #999; margin-bottom: 32rpx; }
 .preview { margin-bottom: 24rpx; }
 .img { width: 100%; border-radius: 8rpx; }
 .field { margin-bottom: 24rpx; }

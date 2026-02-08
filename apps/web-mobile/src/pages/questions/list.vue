@@ -4,6 +4,7 @@
       <text class="title">我的错题本</text>
       <text class="sub" v-if="list.length">{{ list.length }} 个</text>
       <view class="header-right">
+        <text class="link" @click="goCreateWithPhoto">新建错题本</text>
         <text class="link" @click="goStats">数据统计</text>
         <text class="link" @click="goAllQuestions">全部错题</text>
       </view>
@@ -38,30 +39,10 @@
     </view>
     <view class="empty" v-else-if="!loading">
       <text class="empty-text">暂无错题本</text>
-      <text class="empty-hint">点击右下角 + 创建错题本</text>
+      <text class="empty-hint">点击右下角 + 拍照添加错题，或点「新建错题本」先建本</text>
     </view>
 
-    <view class="float-btn" @click="showSheet = true">+</view>
-
-    <!-- 底部弹窗：创建或扫描 -->
-    <view class="mask" v-if="showSheet" @click="showSheet = false"></view>
-    <view class="sheet" :class="{ show: showSheet }">
-      <view class="sheet-title">创建或扫描</view>
-      <view class="sheet-actions">
-        <view class="sheet-card sheet-card-blue" @click="goCreateWithPhoto">
-          <view class="sheet-card-icon-wrap blue">
-            <text class="sheet-card-icon">📁</text>
-          </view>
-          <text class="sheet-card-text">新建错题本</text>
-        </view>
-        <view class="sheet-card sheet-card-orange" @click="goPhotoCreate">
-          <view class="sheet-card-icon-wrap orange">
-            <text class="sheet-card-icon">📷</text>
-          </view>
-          <text class="sheet-card-text">拍照</text>
-        </view>
-      </view>
-    </view>
+    <view class="float-btn" @click="goAddWithCamera">+</view>
 
     <view class="tabbar-placeholder" />
     <TabBar current="questions" />
@@ -70,15 +51,16 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
 import { listSubjects, updateSubject, deleteSubject } from '@/api/subjects.js'
 import { listQuestions } from '@/api/questions.js'
 import { uploadImage } from '@/api/questions.js'
+import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 
 const list = ref([])
 const loading = ref(true)
-const showSheet = ref(false)
 const subjectCounts = ref({})
 
 function coverUrl(s) {
@@ -169,14 +151,30 @@ async function doDelete(s) {
 }
 
 function goCreateWithPhoto() {
-  showSheet.value = false
   uni.navigateTo({ url: '/pages/subjects/create-with-photo' })
 }
 
-function goPhotoCreate() {
-  showSheet.value = false
-  uni.navigateTo({ url: '/pages/questions/add?mode=createBook' })
+/** 直接调起相机，拍完进入裁剪，裁剪后返回本页再由 onShow 跳添加页 */
+function openCameraThenCrop() {
+  uni.chooseImage({
+    count: 1,
+    sourceType: ['camera'],
+    success: (res) => {
+      setSourcePath(res.tempFilePaths[0])
+      uni.navigateTo({ url: '/pages/common/image-crop' })
+    }
+  })
 }
+
+function goAddWithCamera() {
+  openCameraThenCrop()
+}
+
+onShow(() => {
+  if (getResultPath()) {
+    uni.navigateTo({ url: '/pages/questions/add' })
+  }
+})
 
 function goAllQuestions() {
   uni.navigateTo({ url: '/pages/questions/all' })
@@ -186,7 +184,15 @@ function goStats() {
   uni.navigateTo({ url: '/pages/stats/index' })
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  const pages = getCurrentPages()
+  const page = pages[pages.length - 1]
+  const opts = page.options || {}
+  if (opts.openCamera === '1') {
+    setTimeout(openCameraThenCrop, 100)
+  }
+})
 </script>
 
 <style scoped>
@@ -315,47 +321,5 @@ onMounted(load)
   box-shadow: 0 8rpx 24rpx rgba(25,137,250,0.35);
   z-index: 10;
 }
-.mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 98; }
-.sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #fff;
-  border-radius: 32rpx 32rpx 0 0;
-  padding: 40rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
-  z-index: 99;
-  transform: translateY(100%);
-  transition: transform 0.3s;
-}
-.sheet.show { transform: translateY(0); }
-.sheet-title { font-size: 34rpx; font-weight: 600; color: #333; margin-bottom: 32rpx; padding-left: 8rpx; }
-.sheet-actions { display: flex; gap: 24rpx; }
-.sheet-card {
-  flex: 1;
-  border-radius: 20rpx;
-  padding: 36rpx 24rpx;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20rpx;
-}
-.sheet-card-blue { background: #e8f4ff; }
-.sheet-card-orange { background: #fff4e6; }
-.sheet-card-icon-wrap {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.sheet-card-icon-wrap.blue { background: rgba(25,137,250,0.15); }
-.sheet-card-icon-wrap.orange { background: rgba(255,152,0,0.2); }
-.sheet-card-icon { font-size: 48rpx; }
-.sheet-card-text { font-size: 28rpx; font-weight: 500; }
-.sheet-card-blue .sheet-card-text { color: #1989fa; }
-.sheet-card-orange .sheet-card-text { color: #f57c00; }
 .tabbar-placeholder { height: 120rpx; }
 </style>
