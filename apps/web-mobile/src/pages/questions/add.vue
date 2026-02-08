@@ -79,13 +79,25 @@ async function loadSubjects() {
 }
 
 watch(subjectId, async (id) => {
-  if (!id) { chapters.value = []; return }
+  if (!id) { chapters.value = []; chapterId.value = null; chapterName.value = ''; return }
   try {
     chapters.value = await listChapters(id)
+    if (pendingChapterId.value) {
+      const c = chapters.value.find(x => x.id === pendingChapterId.value)
+      if (c) {
+        chapterId.value = c.id
+        chapterName.value = c.name
+      }
+      pendingChapterId.value = null
+      pendingChapterName.value = ''
+    }
   } catch (e) {
     chapters.value = []
   }
 })
+
+const pendingChapterId = ref(null)
+const pendingChapterName = ref('')
 
 function onSubjectChange(e) {
   const i = e.detail.value
@@ -188,14 +200,26 @@ async function submit() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const pages = getCurrentPages()
   const page = pages[pages.length - 1]
   const opts = page.options || {}
   createBookMode.value = opts.mode === 'createBook'
+  await loadSubjects()
+  const sid = opts.subject_id ? parseInt(opts.subject_id, 10) : 0
+  const cid = opts.chapter_id ? parseInt(opts.chapter_id, 10) : null
+  if (sid && !createBookMode.value) {
+    if (cid) {
+      pendingChapterId.value = cid
+      pendingChapterName.value = opts.chapter_name ? decodeURIComponent(opts.chapter_name) : ''
+    }
+    const s = subjects.value.find(x => x.id === sid)
+    if (s) {
+      subjectId.value = s.id
+      subjectName.value = s.name
+    }
+  }
 })
-
-loadSubjects()
 </script>
 
 <style scoped>

@@ -4,9 +4,9 @@
       <button class="btn primary" @click="goAdd">添加章节</button>
     </view>
     <view class="list" v-if="list.length">
-      <view class="item" v-for="c in list" :key="c.id">
+      <view class="item" v-for="c in list" :key="c.id" @click="goChapterQuestions(c)">
         <text class="name">{{ c.name }}</text>
-        <view class="actions">
+        <view class="actions" @click.stop>
           <text class="link" @click="goEdit(c)">编辑</text>
           <text class="link danger" @click="onDelete(c)">删除</text>
         </view>
@@ -19,6 +19,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { listChapters, deleteChapter } from '@/api/chapters.js'
 
 const subjectId = ref(0)
@@ -46,6 +47,12 @@ function goEdit(c) {
   uni.navigateTo({ url: `/pages/chapters/edit?id=${c.id}&subject_id=${subjectId.value}&name=${encodeURIComponent(c.name)}&sort=${c.sort}` })
 }
 
+function goChapterQuestions(c) {
+  uni.navigateTo({
+    url: `/pages/chapters/questions?subject_id=${subjectId.value}&chapter_id=${c.id}&subject_name=${encodeURIComponent(subjectName.value)}&chapter_name=${encodeURIComponent(c.name)}`
+  })
+}
+
 async function onDelete(c) {
   const ok = await new Promise(r => uni.showModal({ title: '确认删除', content: `删除章节「${c.name}」？`, success: res => r(res.confirm) }))
   if (!ok) return
@@ -58,13 +65,22 @@ async function onDelete(c) {
   }
 }
 
-onMounted(() => {
+function initFromOptions() {
   const pages = getCurrentPages()
   const page = pages[pages.length - 1]
   const opts = page.options || {}
   subjectId.value = parseInt(opts.subject_id, 10) || 0
   subjectName.value = opts.subject_name ? decodeURIComponent(opts.subject_name) : ''
   uni.setNavigationBarTitle({ title: subjectName.value ? `${subjectName.value} - 章节` : '章节管理' })
+}
+
+onMounted(() => {
+  initFromOptions()
+  load()
+})
+
+onShow(() => {
+  initFromOptions()
   load()
 })
 </script>
