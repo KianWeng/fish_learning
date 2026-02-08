@@ -25,7 +25,7 @@ async def get_subject(subject_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=SubjectResponse)
 async def create_subject(body: SubjectCreate, db: AsyncSession = Depends(get_db)):
-    s = Subject(name=body.name, sort=body.sort)
+    s = Subject(name=body.name, sort=body.sort, cover_url=body.cover_url)
     db.add(s)
     await db.flush()
     await db.refresh(s)
@@ -42,6 +42,8 @@ async def update_subject(subject_id: int, body: SubjectUpdate, db: AsyncSession 
         s.name = body.name
     if body.sort is not None:
         s.sort = body.sort
+    if body.cover_url is not None:
+        s.cover_url = body.cover_url
     await db.flush()
     await db.refresh(s)
     return s

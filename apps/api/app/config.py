@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     minio_bucket: str = "mistake-book"
+    # 微信小程序登录
+    wechat_appid: str = ""
+    wechat_secret: str = ""
+    # JWT
+    jwt_secret: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = 720  # 30 天
 
     class Config:
         env_file = ".env"

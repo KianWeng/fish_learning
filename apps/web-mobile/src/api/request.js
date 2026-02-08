@@ -1,13 +1,20 @@
 import { API_BASE_URL } from '@/config.js'
 
+const TOKEN_KEY = 'token'
+
 function request(options) {
   const url = (options.url.startsWith('http') ? options.url : API_BASE_URL + options.url)
+  const header = { 'Content-Type': 'application/json', ...options.header }
+  try {
+    const token = uni.getStorageSync(TOKEN_KEY)
+    if (token) header['Authorization'] = 'Bearer ' + token
+  } catch (e) {}
   return new Promise((resolve, reject) => {
     uni.request({
       url,
       method: options.method || 'GET',
       data: options.data,
-      header: { 'Content-Type': 'application/json', ...options.header },
+      header,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)
