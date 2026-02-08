@@ -25,14 +25,14 @@
 import { ref, onMounted, watch } from 'vue'
 import { getQuestion } from '@/api/questions.js'
 
-const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '' : 'http://localhost:8000'
+import { API_BASE_URL } from '@/config.js'
 
 const q = ref(null)
 const loading = ref(true)
 const imageFullUrl = ref('')
 
 watch(() => q.value?.image_url, (url) => {
-  if (url) imageFullUrl.value = url.startsWith('http') ? url : BASE_URL + url
+  if (url) imageFullUrl.value = url.startsWith('http') ? url : API_BASE_URL + url
 }, { immediate: true })
 
 onMounted(async () => {

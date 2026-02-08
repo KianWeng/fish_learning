@@ -20,13 +20,17 @@
         <text class="label">答案</text>
         <input class="input" v-model="form.answer" placeholder="答案" />
       </view>
-      <view class="field">
+      <view class="field" v-if="createBookMode">
+        <text class="label">错题本名称</text>
+        <input class="input" v-model="bookName" placeholder="输入错题本名字，不存在将自动创建" />
+      </view>
+      <view class="field" v-else>
         <text class="label">科目</text>
         <picker :range="subjects" range-key="name" @change="onSubjectChange">
           <view class="picker">{{ subjectName || '请选择科目' }}</view>
         </picker>
       </view>
-      <view class="field" v-if="subjectId">
+      <view class="field" v-if="subjectId && !createBookMode">
         <text class="label">章节</text>
         <picker :range="chapters" range-key="name" @change="onChapterChange">
           <view class="picker">{{ chapterName || '可选章节' }}</view>
@@ -41,15 +45,12 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import TabBar from '@/components/TabBar.vue'
-import { listSubjects } from '@/api/subjects.js'
+import { API_BASE_URL } from '@/config.js'
+import { listSubjects, createSubject } from '@/api/subjects.js'
 import { listChapters } from '@/api/chapters.js'
 import { uploadAndAnalyzeImage, createQuestion } from '@/api/questions.js'
-
-const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? ''
-  : 'http://localhost:8000'
 
 const result = ref(null)
 const form = ref({ content: '', analysis: '', answer: '', image_url: '', subject_id: 0, chapter_id: null })
@@ -60,10 +61,13 @@ const chapterName = ref('')
 const subjects = ref([])
 const chapters = ref([])
 const saving = ref(false)
+/** 拍照创建模式：拍照后输入错题本名字，不存在则新建 */
+const createBookMode = ref(false)
+const bookName = ref('')
 
 const imageFullUrl = ref('')
 watch(() => result.value?.url, (url) => {
-  if (url) imageFullUrl.value = url.startsWith('http') ? url : BASE_URL + url
+  if (url) imageFullUrl.value = url.startsWith('http') ? url : API_BASE_URL + url
 }, { immediate: true })
 
 async function loadSubjects() {
@@ -131,6 +135,7 @@ function reset() {
   subjectName.value = ''
   chapterId.value = null
   chapterName.value = ''
+  if (createBookMode.value) bookName.value = ''
 }
 
 async function submit() {
@@ -138,15 +143,36 @@ async function submit() {
     uni.showToast({ title: '请填写题目内容', icon: 'none' })
     return
   }
-  if (!subjectId.value) {
+  let sid = subjectId.value
+  if (createBookMode.value) {
+    const name = bookName.value.trim()
+    if (!name) {
+      uni.showToast({ title: '请输入错题本名称', icon: 'none' })
+      return
+    }
+    const exist = subjects.value.find(s => s.name === name)
+    if (exist) {
+      sid = exist.id
+    } else {
+      try {
+        const sub = await createSubject({ name, sort: 0 })
+        sid = sub.id
+        subjects.value.push(sub)
+      } catch (e) {
+        uni.showToast({ title: e.message || '创建错题本失败', icon: 'none' })
+        return
+      }
+    }
+  }
+  if (!sid) {
     uni.showToast({ title: '请选择科目', icon: 'none' })
     return
   }
   saving.value = true
   try {
     await createQuestion({
-      subject_id: subjectId.value,
-      chapter_id: chapterId.value || undefined,
+      subject_id: sid,
+      chapter_id: createBookMode.value ? undefined : (chapterId.value || undefined),
       content: form.value.content.trim(),
       analysis: form.value.analysis || undefined,
       answer: form.value.answer || undefined,
@@ -161,6 +187,13 @@ async function submit() {
     saving.value = false
   }
 }
+
+onMounted(() => {
+  const pages = getCurrentPages()
+  const page = pages[pages.length - 1]
+  const opts = page.options || {}
+  createBookMode.value = opts.mode === 'createBook'
+})
 
 loadSubjects()
 </script>

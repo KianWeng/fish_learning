@@ -1,6 +1,6 @@
 const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? '/api'
-  : 'http://localhost:8000'
+  : 'http://192.168.3.22:8000'
 
 function request(options) {
   const url = (options.url.startsWith('http') ? options.url : BASE_URL + options.url)

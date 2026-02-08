@@ -25,7 +25,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { getQuestion } from '@/api/questions.js'
 
-const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '' : 'http://localhost:8000'
+const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '' : 'http://192.168.3.22:8000'
 
 const q = ref(null)
 const loading = ref(true)

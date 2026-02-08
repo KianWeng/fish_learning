@@ -1,6 +1,6 @@
 import request from './request.js'
 
-const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '/api' : 'http://localhost:8000'
+const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '/api' : 'http://192.168.3.22:8000'
 
 /**
  * 上传 PDF 并导入错题。H5 传入 { file, subjectId, chapterId } 其中 file 为 File 对象；

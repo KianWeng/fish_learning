@@ -1,6 +1,5 @@
 import request from './request.js'
-
-const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '/api' : 'http://localhost:8000'
+import { API_BASE_URL } from '@/config.js'
 
 /**
  * 上传 PDF 并导入错题。H5 传入 { file, subjectId, chapterId } 其中 file 为 File 对象；
@@ -13,7 +12,7 @@ export function importPdf(options) {
     form.append('file', options.file)
     form.append('subject_id', String(subjectId))
     if (chapterId != null) form.append('chapter_id', String(chapterId))
-    return fetch(`${BASE_URL}/upload/pdf/import`, {
+    return fetch(`${API_BASE_URL}/upload/pdf/import`, {
       method: 'POST',
       body: form,
     }).then((res) => {
@@ -23,7 +22,7 @@ export function importPdf(options) {
   }
   return new Promise((resolve, reject) => {
     uni.uploadFile({
-      url: `${BASE_URL}/upload/pdf/import`,
+      url: `${API_BASE_URL}/upload/pdf/import`,
       filePath: options.filePath,
       name: 'file',
       formData: { subject_id: String(subjectId), chapter_id: chapterId != null ? String(chapterId) : '' },

@@ -29,7 +29,8 @@
 defineProps({ current: { type: String, default: '' } })
 
 function go(url) {
-  uni.switchTab ? uni.switchTab({ url }) : uni.navigateTo({ url })
+  // 自定义 TabBar 未配置原生 tabBar，不能用 switchTab；用 reLaunch 清栈并打开目标页，实现“切 tab”效果
+  uni.reLaunch({ url })
 }
 </script>
 

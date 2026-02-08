@@ -17,7 +17,28 @@ npm install
 ## 开发
 
 - **H5**：`npm run dev:h5`，浏览器访问 http://localhost:5173（需同时启动后端并配置代理，见 vite.config.js）
-- **微信小程序**：`npm run dev:mp-weixin`，用微信开发者工具打开 `dist/dev/mp-weixin` 目录
+- **微信小程序**：先执行 `npm run dev:mp-weixin`，再用**微信开发者工具**打开目录 **`dist/dev/mp-weixin`**（必须打开编译后的目录，不要打开项目源码根目录）。
+
+### 微信模拟器启动失败时请按下面排查
+
+1. **必须打开编译输出目录**  
+   在微信开发者工具里，导入项目时选择的是 **`apps/web-mobile/dist/dev/mp-weixin`**，而不是 `apps/web-mobile` 或 `apps/web-mobile/src`。未编译或打开错目录会导致「模拟器启动失败」。
+
+2. **先编译再打开**  
+   在项目根目录 `apps/web-mobile` 下执行：
+   ```bash
+   npm run dev:mp-weixin
+   ```
+   等终端里出现“编译完成”或类似提示后，再用微信开发者工具打开 `dist/dev/mp-weixin`。
+
+3. **开启服务端口**（若用 HBuilderX 或 CLI 自动打开工具）  
+   微信开发者工具 → **设置 → 安全设置** → 勾选 **开启服务端口**。
+
+4. **清理缓存后重试**  
+   微信开发者工具 → **设置 → 外观设置** → **清理缓存** → 全部清理，然后关闭并重新打开项目（仍要打开 `dist/dev/mp-weixin`）。
+
+5. **本机调试可不填 AppID**  
+   `manifest.json` 里 `mp-weixin.appid` 为空时，在微信开发者工具里选「测试号」或「不使用 AppID」即可本地预览。
 
 ## 构建
 

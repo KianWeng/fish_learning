@@ -1,9 +1,7 @@
-const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? '/api'
-  : 'http://localhost:8000'
+import { API_BASE_URL } from '@/config.js'
 
 function request(options) {
-  const url = (options.url.startsWith('http') ? options.url : BASE_URL + options.url)
+  const url = (options.url.startsWith('http') ? options.url : API_BASE_URL + options.url)
   return new Promise((resolve, reject) => {
     uni.request({
       url,

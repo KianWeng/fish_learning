@@ -2,7 +2,7 @@ import request from './request.js'
 
 const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? '/api'
-  : 'http://localhost:8000'
+  : 'http://192.168.3.22:8000'
 
 export function listQuestions(params = {}) {
   return request.get('/questions', params)

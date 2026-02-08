@@ -46,7 +46,7 @@ import { uploadAndAnalyzeImage, createQuestion } from '@/api/questions.js'
 
 const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? ''
-  : 'http://localhost:8000'
+  : 'http://192.168.3.22:8000'
 
 const result = ref(null)
 const form = ref({ content: '', analysis: '', answer: '', image_url: '', subject_id: 0, chapter_id: null })
