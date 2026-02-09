@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from fastapi import Depends
 
-from app.services.storage import save_upload_file
+from app.services.storage import save_upload_file, save_avatar, save_question_image, SUBDIR_PDFS
 from app.services.llm import analyze_question_image
+from app.routers.files import require_auth
 from app.services.pdf_parse import extract_text_by_page, parse_page_to_question
 from app.models import Question, ImportBatch
 
@@ -16,10 +17,11 @@ router = APIRouter()
 
 @router.post("/image")
 async def upload_image(file: UploadFile = File(...)):
+    """上传题目图片，保存到 questions/ 并压缩，返回 /files/questions/..."""
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    path = save_upload_file(content, file.filename or "image.jpg", "images")
+    path = save_question_image(content, file.filename or "image.jpg")
     return {"url": path}
 
 
@@ -37,7 +39,7 @@ async def upload_and_analyze(file: UploadFile = File(...)):
     logger.info("[upload/image/analyze] 收到图片: filename=%s, size=%d bytes, content_type=%s", filename, size, content_type)
     print(f"[upload/image/analyze] 收到图片: filename={filename}, size={size} bytes, content_type={content_type}")
 
-    path = save_upload_file(content, filename, "images")
+    path = save_question_image(content, filename)
     result = await analyze_question_image(image_bytes=content)
     response = {
         "url": path,
@@ -71,7 +73,7 @@ async def import_pdf(
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    path = save_upload_file(content, file.filename or "import.pdf", "pdfs")
+    path = save_upload_file(content, file.filename or "import.pdf", SUBDIR_PDFS)
     batch = ImportBatch(subject_id=subject_id, chapter_id=chapter_id, file_url=path)
     db.add(batch)
     await db.flush()
@@ -101,3 +103,16 @@ async def import_pdf(
         created += 1
     await db.flush()
     return {"ok": True, "import_batch_id": batch.id, "pages": len(pages), "created": created}
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    _: int = Depends(require_auth),
+):
+    """上传用户头像，保存到 avatars/ 并压缩，返回 /files/avatars/...（需登录）"""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="空文件")
+    path = save_avatar(content, file.filename or "avatar.jpg")
+    return {"url": path}

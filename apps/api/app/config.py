@@ -5,6 +5,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/mistake_book"
     storage_type: str = "local"
     storage_local_path: str = "./uploads"
+    # 生产 HTTPS：反向代理后若仍为 http 则重定向到 https
+    force_https: bool = False
+    # 对外 API 基地址（可选，用于生成绝对 URL 时，如 https://api.example.com）
+    api_base_url: str = ""
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     # Coze 工作流（优先于 OpenAI）：鉴权 PAT、工作流 ID、图片参数名

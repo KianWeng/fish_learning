@@ -17,6 +17,9 @@ build/
 .env.local
 *.pem
 
+# SSL 证书（勿提交私钥与证书到仓库）
+apps/api/ssl/
+
 # 后端上传目录
 apps/api/uploads/
 

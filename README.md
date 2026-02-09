@@ -58,14 +58,100 @@ npm run dev:mp-weixin
 
 | 变量 | 说明 |
 |------|------|
-| `DATABASE_URL` | PostgreSQL 连接串，默认 `postgresql+asyncpg://postgres:postgres@localhost:5432/mistake_book` |
-| `OPENAI_API_KEY` | 大模型 API Key（OpenAI 或国内兼容接口） |
+| `DATABASE_URL` | PostgreSQL 连接串 |
+| `COZE_API_KEY` | Coze PAT（鉴权），拍照识题优先走 Coze 工作流 |
+| `COZE_WORKFLOW_ID` | Coze 工作流 ID |
+| `COZE_IMAGE_PARAMETER` | 工作流中图片输入参数名，默认 `image` |
+| `OPENAI_API_KEY` | 大模型 API Key（未配置 Coze 时或 PDF 解析使用） |
 | `OPENAI_BASE_URL` | 可选，大模型 base URL |
-| `STORAGE_LOCAL_PATH` | 本地存储路径，默认 `./uploads` |
+| `STORAGE_LOCAL_PATH` | 本地存储路径，默认 `./uploads`（其下分 `avatars/`、`questions/`、`pdfs/`） |
+| `FORCE_HTTPS` | 设为 `true` 时，若请求为 http（如 `X-Forwarded-Proto=http`）则 301 重定向到 https |
+| `API_BASE_URL` | 可选，对外 API 基地址（用于生成绝对 URL） |
+
+### HTTPS 与文件访问
+
+- **文件存储**：上传文件不再直接暴露为静态目录，改为由应用按类型分目录存储并鉴权下发（头像 `avatars/`、题目图 `questions/`、PDF `pdfs/`）；详见上文环境变量与下方「生产部署」。
+- 题目图片（`/files/questions/...`）为公开访问（链接为 UUID 难以猜测），前端可直接用 `<img src="...">` 展示；PDF 需登录后访问。
+
+## 生产部署（HTTPS）
+
+你已有 HTTPS 证书时，可用以下任一方式部署，并设置 `FORCE_HTTPS=true`（用反向代理时）。
+
+### 方式一：Nginx 反向代理（推荐）
+
+Nginx 对外 443，把请求转发到本机 uvicorn（如 8000 端口），并设置 `X-Forwarded-Proto`、`X-Forwarded-For` 等，便于应用做 HTTPS 重定向和日志。
+
+1. 安装 Nginx（如 Ubuntu：`sudo apt install nginx`）。
+2. 新建站点配置（如 `/etc/nginx/sites-available/mistake-book-api`）：
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    ssl_certificate     /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+```
+
+3. 启用并重载 Nginx：
+
+```bash
+sudo ln -s /etc/nginx/sites-available/mistake-book-api /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+4. 后端用 systemd 或 supervisor 跑 uvicorn（仅监听本地，不绑证书），例如：
+
+```bash
+cd /path/to/mistake_book/apps/api
+source .venv/bin/activate
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+5. 在 `.env` 中设置 `FORCE_HTTPS=true`（若仍有 http 访问则应用内会 301 到 https）。
+
+### 方式二：Caddy 反向代理
+
+Caddy 配置更简洁，若你已有证书可手动指定：
+
+```bash
+# Caddyfile 示例
+tls /path/to/fullchain.pem /path/to/privkey.pem
+reverse_proxy 127.0.0.1:8000
+```
+
+Caddy 会转发 `X-Forwarded-Proto`。同样在 `.env` 中设置 `FORCE_HTTPS=true`，后端 uvicorn 只监听 `127.0.0.1:8000`。
+
+### 方式三：Uvicorn 直连 HTTPS（单机简单部署）
+
+不经过反向代理，直接让 uvicorn 使用你的证书：
+
+```bash
+cd apps/api
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 443 \
+  --ssl-keyfile=/path/to/privkey.pem \
+  --ssl-certfile=/path/to/fullchain.pem
+```
+
+- 监听 443 通常需 root 或 `setcap` 赋权。
+- 不经过 Nginx/Caddy 时，静态资源、限流、多实例等需自行处理；适合单实例、流量不大的场景。
+- 此时应用内 `X-Forwarded-Proto` 可能为 http（直连无代理），可按需将 `FORCE_HTTPS` 设为 `false` 或仅在前端使用 https 地址。
 
 ## 功能概览
 
-1. **拍照添加错题**：上传图片 → 大模型识别题目并生成解析与答案 → 选择科目/章节保存
+1. **拍照添加错题**：上传图片 → Coze 工作流（或 OpenAI）识别题目并输出 JSON（题目/解析/答案）→ 选择科目/章节保存
 2. **科目与章节**：在「科目管理」中增删改科目，进入某科目可管理章节
 3. **错题列表与详情**：按科目/章节筛选，点击进入详情查看题目与解析
 4. **每日复习**：按艾宾浩斯曲线，展示今日待复习题目，选择「记得/模糊/忘记」后更新下次复习日
