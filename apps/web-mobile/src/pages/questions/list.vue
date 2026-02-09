@@ -30,8 +30,8 @@
           <view class="card-footer">
             <text class="book-name">{{ s.name }}</text>
             <view class="progress-wrap">
-              <view class="progress-bar"><view class="progress-inner" :style="{ width: getProgress(s) + '%' }"></view></view>
-              <text class="progress-text">{{ getProgress(s) }}%</text>
+              <view class="progress-bar"><view class="progress-inner" :style="{ width: getBarWidth(s) + '%' }"></view></view>
+              <text class="progress-text">{{ getCount(s) }} 题</text>
             </view>
           </view>
         </view>
@@ -84,9 +84,15 @@ async function load() {
   }
 }
 
-function getProgress(s) {
-  const total = subjectCounts.value[s.id] || 0
-  return total > 0 ? Math.min(100, 50) : 0
+/** 该错题本题目数量 */
+function getCount(s) {
+  return subjectCounts.value[s.id] || 0
+}
+
+/** 进度条宽度百分比：按题目数量，约 30 题为满格 */
+function getBarWidth(s) {
+  const n = getCount(s)
+  return n <= 0 ? 0 : Math.min(100, (n / 30) * 100)
 }
 
 function goChapters(s) {
