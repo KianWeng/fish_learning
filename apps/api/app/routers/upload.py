@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from app.services.llm import analyze_question_image
 from app.services.pdf_parse import extract_text_by_page, parse_page_to_question
 from app.models import Question, ImportBatch
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -27,9 +29,33 @@ async def upload_and_analyze(file: UploadFile = File(...)):
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    path = save_upload_file(content, file.filename or "image.jpg", "images")
+
+    # 打印前端传入的图片信息
+    filename = file.filename or "image.jpg"
+    size = len(content)
+    content_type = file.content_type or ""
+    logger.info("[upload/image/analyze] 收到图片: filename=%s, size=%d bytes, content_type=%s", filename, size, content_type)
+    print(f"[upload/image/analyze] 收到图片: filename={filename}, size={size} bytes, content_type={content_type}")
+
+    path = save_upload_file(content, filename, "images")
     result = await analyze_question_image(image_bytes=content)
-    return {"url": path, "content": result["content"], "analysis": result["analysis"], "answer": result["answer"]}
+    response = {
+        "url": path,
+        "content": result["content"],
+        "analysis": result["analysis"],
+        "answer": result["answer"],
+    }
+
+    # 打印返回给前端的数据摘要
+    logger.info(
+        "[upload/image/analyze] 返回前端: url=%s, content_len=%d, analysis_len=%d, answer=%s",
+        response["url"], len(response["content"]), len(response["analysis"]), response["answer"][:50] if response["answer"] else ""
+    )
+    answer_preview = response["answer"][:80] + "..." if len(response["answer"]) > 80 else response["answer"]
+    print(f"[upload/image/analyze] 返回前端: url={response['url']}, content_len={len(response['content'])}, analysis_len={len(response['analysis'])}, answer={answer_preview!r}")
+    print(f"[upload/image/analyze] 返回完整数据: {response}")
+
+    return response
 
 
 @router.post("/pdf/import")

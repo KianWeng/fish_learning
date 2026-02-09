@@ -52,7 +52,13 @@ async def wechat_login(body: WechatLoginIn, db: AsyncSession = Depends(get_db)):
         )
     data = r.json()
     if "openid" not in data:
-        raise HTTPException(status_code=400, detail=data.get("errmsg", "微信登录失败"))
+        errcode = data.get("errcode", "")
+        errmsg = data.get("errmsg", "微信登录失败")
+        detail = f"{errmsg}" + (f" (errcode={errcode})" if errcode else "")
+        if errcode == 40029:
+            detail += "。请确保：1) 每次登录都用 wx.login() 新拿的 code；2) code 只用一次、不重复请求；3) code 在约 5 分钟内使用。"
+        print(f"[auth/wechat/login] 微信登录失败: errcode={errcode}, errmsg={errmsg}, 完整响应: {data}")
+        raise HTTPException(status_code=400, detail=detail)
     openid = data["openid"]
     unionid = data.get("unionid")
 
