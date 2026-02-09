@@ -54,7 +54,7 @@ import { ref, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
-import { listSubjects, updateSubject, deleteSubject } from '@/api/subjects.js'
+import { listSubjects, updateSubject, deleteSubject, exportSubjectPdf } from '@/api/subjects.js'
 import { listQuestions } from '@/api/questions.js'
 import { uploadImage } from '@/api/questions.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
@@ -95,13 +95,43 @@ function goChapters(s) {
 
 function openCardMenu(s) {
   uni.showActionSheet({
-    itemList: ['重命名', '替换封面', '删除'],
+    itemList: ['导出 PDF', '重命名', '替换封面', '删除'],
     success: (res) => {
-      if (res.tapIndex === 0) goRename(s)
-      else if (res.tapIndex === 1) changeCover(s)
-      else if (res.tapIndex === 2) doDelete(s)
+      if (res.tapIndex === 0) exportPdf(s)
+      else if (res.tapIndex === 1) goRename(s)
+      else if (res.tapIndex === 2) changeCover(s)
+      else if (res.tapIndex === 3) doDelete(s)
     }
   })
+}
+
+async function exportPdf(s) {
+  uni.showLoading({ title: '生成中...' })
+  try {
+    const res = await exportSubjectPdf(s.id)
+    const url = (res.url || '').startsWith('http') ? res.url : (API_BASE_URL.replace(/\/$/, '') + (res.url.startsWith('/') ? res.url : '/' + res.url))
+    const token = uni.getStorageSync('token') || ''
+    uni.hideLoading()
+    uni.downloadFile({
+      url,
+      header: token ? { Authorization: 'Bearer ' + token } : {},
+      success: (d) => {
+        if (d.statusCode === 200) {
+          uni.openDocument({
+            filePath: d.tempFilePath,
+            showMenu: true,
+            fileType: 'pdf'
+          })
+        } else {
+          uni.showToast({ title: '下载失败', icon: 'none' })
+        }
+      },
+      fail: () => uni.showToast({ title: '下载失败', icon: 'none' })
+    })
+  } catch (e) {
+    uni.hideLoading()
+    uni.showToast({ title: e.message || '导出失败', icon: 'none' })
+  }
 }
 
 function goRename(s) {
