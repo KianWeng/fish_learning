@@ -13,6 +13,10 @@ export function deleteQuestion(id) {
   return request.delete(`/questions/${id}`)
 }
 
+export function updateQuestion(id, data) {
+  return request.patch(`/questions/${id}`, data)
+}
+
 export function createQuestion(data) {
   return request.post('/questions', data)
 }

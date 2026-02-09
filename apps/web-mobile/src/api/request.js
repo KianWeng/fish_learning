@@ -31,5 +31,6 @@ export default {
   get: (url, data) => request({ url, method: 'GET', data }),
   post: (url, data) => request({ url, method: 'POST', data }),
   put: (url, data) => request({ url, method: 'PUT', data }),
+  patch: (url, data) => request({ url, method: 'PATCH', data }),
   delete: (url) => request({ url, method: 'DELETE' })
 }

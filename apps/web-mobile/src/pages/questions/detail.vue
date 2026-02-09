@@ -1,8 +1,9 @@
 <template>
   <view class="page" v-if="q">
-    <view class="card" v-if="q.image_url">
+    <view class="card img-card" v-if="q.image_url" @click="openImagePreview">
       <image v-if="imageFullUrl" :src="imageFullUrl" mode="widthFix" class="img" @error="onImageError" />
       <view v-else class="img-placeholder">图片加载失败</view>
+      <text class="img-tap-hint">点击放大查看</text>
     </view>
     <!-- 调试用：显示图片地址，长按可复制，便于在浏览器中直接打开测试 -->
     <view class="card debug-card" v-if="q.image_url && showDebug">
@@ -22,18 +23,58 @@
       <text class="label">答案</text>
       <text class="content">{{ q.answer }}</text>
     </view>
+    <view class="card notes-card">
+      <text class="label">自我剖析</text>
+      <textarea
+        class="notes-input"
+        v-model="userNotes"
+        placeholder="记录你的错因、思路或复习笔记…"
+        :maxlength="2000"
+        @blur="saveUserNotes"
+      />
+      <view class="notes-actions">
+        <button class="btn-save" size="mini" @click="saveUserNotes(true)">保存笔记</button>
+      </view>
+    </view>
     <view class="meta">创建于 {{ q.created_at }}</view>
     <view class="debug-toggle" @click="showDebug = !showDebug">
       <text class="debug-toggle-text">{{ showDebug ? '隐藏' : '显示' }}调试信息</text>
     </view>
   </view>
+  <!-- 图片预览弹窗：双指缩放、可滚动查看全图、工具栏 +/- -->
+  <view class="image-preview-mask" v-if="imagePreviewVisible" @click="closeImagePreview">
+    <view
+      class="image-preview-wrap"
+      @click.stop
+      @touchstart="onPreviewTouchStart"
+      @touchmove="onPreviewTouchMove"
+      @touchend="onPreviewTouchEnd"
+      @touchcancel="onPreviewTouchEnd"
+    >
+      <view class="image-preview-inner" :style="{ width: imagePreviewScale * 100 + '%' }">
+        <image
+          v-if="imageFullUrl"
+          class="image-preview-img"
+          :src="imageFullUrl"
+          mode="widthFix"
+        />
+      </view>
+    </view>
+    <view class="image-preview-toolbar" @click.stop>
+      <button class="toolbar-btn" @click.stop="zoomOut">－</button>
+      <text class="toolbar-scale">{{ Math.round(imagePreviewScale * 100) }}%</text>
+      <button class="toolbar-btn" @click.stop="zoomIn">＋</button>
+      <button class="toolbar-close" @click.stop="closeImagePreview">关闭</button>
+    </view>
+  </view>
+
   <view class="page empty" v-else-if="!loading">加载失败</view>
   <view class="page empty" v-else>加载中...</view>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { getQuestion } from '@/api/questions.js'
+import { getQuestion, updateQuestion } from '@/api/questions.js'
 
 import { API_BASE_URL } from '@/config.js'
 
@@ -42,6 +83,17 @@ const loading = ref(true)
 const imageFullUrl = ref('')
 const showDebug = ref(false)
 
+const imagePreviewVisible = ref(false)
+const imagePreviewScale = ref(1)
+const MIN_SCALE = 0.5
+const MAX_SCALE = 3
+const SCALE_STEP = 0.25
+// 双指捏合：记录 pinch 开始时的两指距离与当前 scale
+let pinchStartDistance = 0
+let pinchStartScale = 1
+
+const userNotes = ref('')
+let saveNotesTimer = null
 watch(() => q.value?.image_url, (url) => {
   if (!url || typeof url !== 'string') {
     imageFullUrl.value = ''
@@ -54,6 +106,91 @@ watch(() => q.value?.image_url, (url) => {
   console.log('[错题详情] API_BASE_URL:', API_BASE_URL)
   console.log('[错题详情] imageFullUrl:', imageFullUrl.value)
 }, { immediate: true })
+
+watch(() => q.value?.user_notes, (val) => {
+  userNotes.value = val ?? ''
+}, { immediate: true })
+
+function getTouches(e) {
+  return (e.touches && e.touches.length) ? e.touches : (e.detail && e.detail.touches) || []
+}
+
+function getTouchDistance(touches) {
+  if (!touches || touches.length < 2) return 0
+  const a = touches[0]
+  const b = touches[1]
+  const ax = a.clientX != null ? a.clientX : a.x
+  const ay = a.clientY != null ? a.clientY : a.y
+  const bx = b.clientX != null ? b.clientX : b.x
+  const by = b.clientY != null ? b.clientY : b.y
+  return Math.hypot(bx - ax, by - ay)
+}
+
+function onPreviewTouchStart(e) {
+  const touches = getTouches(e)
+  if (touches.length === 2) {
+    pinchStartDistance = getTouchDistance(touches)
+    pinchStartScale = imagePreviewScale.value
+  }
+}
+
+function onPreviewTouchMove(e) {
+  const touches = getTouches(e)
+  if (touches.length === 2 && pinchStartDistance > 0) {
+    if (e.preventDefault) e.preventDefault()
+    const d = getTouchDistance(touches)
+    const scale = (pinchStartScale * d) / pinchStartDistance
+    imagePreviewScale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale))
+  }
+}
+
+function onPreviewTouchEnd(e) {
+  const touches = getTouches(e)
+  if (touches.length < 2) {
+    pinchStartDistance = 0
+  }
+}
+
+function openImagePreview() {
+  if (!imageFullUrl.value) return
+  imagePreviewScale.value = 1
+  imagePreviewVisible.value = true
+  pinchStartDistance = 0
+}
+
+function closeImagePreview() {
+  imagePreviewVisible.value = false
+}
+
+function zoomIn() {
+  imagePreviewScale.value = Math.min(MAX_SCALE, imagePreviewScale.value + SCALE_STEP)
+}
+
+function zoomOut() {
+  imagePreviewScale.value = Math.max(MIN_SCALE, imagePreviewScale.value - SCALE_STEP)
+}
+
+async function saveUserNotes(immediate = false) {
+  if (!q.value?.id) return
+  const doSave = async () => {
+    const notes = (userNotes.value || '').trim()
+    try {
+      const updated = await updateQuestion(q.value.id, { user_notes: notes || null })
+      if (updated && updated.user_notes !== undefined) q.value.user_notes = updated.user_notes
+      uni.showToast({ title: '已保存', icon: 'success' })
+    } catch (e) {
+      uni.showToast({ title: e.message || '保存失败', icon: 'none' })
+    }
+  }
+  if (immediate) {
+    if (saveNotesTimer) clearTimeout(saveNotesTimer)
+    saveNotesTimer = null
+    await doSave()
+    return
+  }
+  if (saveNotesTimer) clearTimeout(saveNotesTimer)
+  saveNotesTimer = setTimeout(doSave, 300)
+}
 
 function onImageError(e) {
   console.warn('[错题详情] 图片加载失败', imageFullUrl.value, e)
@@ -88,10 +225,29 @@ onMounted(async () => {
 .card { background: #fff; border-radius: 12rpx; padding: 28rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06); }
 .label { display: block; font-size: 26rpx; color: #999; margin-bottom: 12rpx; }
 .content { font-size: 30rpx; color: #333; white-space: pre-wrap; word-break: break-all; }
+.img-card { position: relative; }
 .img { width: 100%; border-radius: 8rpx; }
+.img-tap-hint { position: absolute; right: 28rpx; bottom: 16rpx; font-size: 22rpx; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.4); padding: 8rpx 16rpx; border-radius: 8rpx; }
 .meta { font-size: 24rpx; color: #999; }
 .empty { text-align: center; padding: 60rpx; }
 .img-placeholder { padding: 48rpx; text-align: center; color: #999; font-size: 28rpx; background: #f5f5f5; border-radius: 8rpx; }
+
+/* 图片预览弹窗：居中、内层按 scale 放大、可滚动查看全图 */
+.image-preview-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 999; display: flex; flex-direction: column; }
+.image-preview-wrap { flex: 1; width: 100%; min-height: 0; overflow: auto; padding: 40rpx; box-sizing: border-box; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; align-items: center; }
+.image-preview-inner { flex: 0 0 auto; }
+.image-preview-img { display: block; width: 100%; }
+.image-preview-toolbar { position: absolute; bottom: 0; left: 0; right: 0; padding: 24rpx 32rpx  env(safe-area-inset-bottom); background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; gap: 24rpx; }
+.toolbar-btn { width: 72rpx; height: 72rpx; line-height: 72rpx; padding: 0; font-size: 36rpx; color: #fff; background: rgba(255,255,255,0.2); border-radius: 12rpx; }
+.toolbar-scale { font-size: 26rpx; color: #fff; min-width: 80rpx; text-align: center; }
+.toolbar-close { padding: 16rpx 32rpx; font-size: 28rpx; color: #fff; background: #07c160; border-radius: 12rpx; }
+
+/* 自我剖析 */
+.notes-card { }
+.notes-input { width: 100%; min-height: 160rpx; font-size: 28rpx; color: #333; padding: 16rpx; box-sizing: border-box; border: 1rpx solid #eee; border-radius: 8rpx; margin-top: 8rpx; }
+.notes-actions { margin-top: 20rpx; }
+.btn-save { background: #07c160; color: #fff; }
+
 .debug-card { background: #fffbe6; }
 .debug-url { font-size: 24rpx; color: #666; word-break: break-all; display: block; margin-top: 8rpx; }
 .debug-hint { font-size: 22rpx; color: #999; display: block; margin-top: 12rpx; }
