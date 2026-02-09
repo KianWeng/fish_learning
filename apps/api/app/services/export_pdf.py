@@ -9,13 +9,13 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, KeepTogether
 
 from app.services.storage import get_file_path, save_upload_file, SUBDIR_PDFS
 
-# A4 可用宽度约 170mm，图片最大宽度；最大高度避免单图占满整页
-IMG_MAX_WIDTH = 170 * mm
-IMG_MAX_HEIGHT = 220 * mm
+# 图片在页内最大尺寸，控制单图占比以利一页多题
+IMG_MAX_WIDTH = 160 * mm
+IMG_MAX_HEIGHT = 120 * mm
 
 # 中文字体：优先 CID，否则用 Helvetica（中文会显示为方框）
 def _register_chinese_font():
@@ -46,41 +46,50 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
     doc = SimpleDocTemplate(
         buf,
         pagesize=A4,
-        leftMargin=20 * mm,
-        rightMargin=20 * mm,
-        topMargin=18 * mm,
-        bottomMargin=18 * mm,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
+        topMargin=14 * mm,
+        bottomMargin=14 * mm,
     )
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         name="CustomTitle",
         parent=styles["Heading1"],
         fontName=font_name,
-        fontSize=18,
-        spaceAfter=12,
+        fontSize=16,
+        spaceAfter=4,
+    )
+    subtitle_style = ParagraphStyle(
+        name="Subtitle",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=9,
+        textColor=colors.HexColor("#666666"),
+        spaceAfter=6,
     )
     heading_style = ParagraphStyle(
         name="CustomHeading",
         parent=styles["Heading2"],
         fontName=font_name,
-        fontSize=12,
-        spaceBefore=14,
-        spaceAfter=6,
+        fontSize=11,
+        spaceBefore=7,
+        spaceAfter=3,
     )
     body_style = ParagraphStyle(
         name="CustomBody",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=10,
-        spaceAfter=6,
+        fontSize=9,
+        spaceAfter=3,
+        leading=12,
     )
     label_style = ParagraphStyle(
         name="Label",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=9,
-        textColor=colors.gray,
-        spaceAfter=2,
+        fontSize=8,
+        textColor=colors.HexColor("#888888"),
+        spaceAfter=1,
     )
 
     def para(text: str, style=body_style):
@@ -90,8 +99,8 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
 
     story = []
     story.append(para(f"错题本：{_safe_text(subject_name, 200)}", title_style))
-    story.append(para(f"共 {len(questions)} 道错题", body_style))
-    story.append(Spacer(1, 8 * mm))
+    story.append(para(f"共 {len(questions)} 道错题", subtitle_style))
+    story.append(Spacer(1, 5 * mm))
 
     for i, q in enumerate(questions, 1):
         story.append(para(f"第 {i} 题", heading_style))
@@ -110,8 +119,7 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
                         scale = min(IMG_MAX_WIDTH / iw, IMG_MAX_HEIGHT / ih, 1.0)
                         w, h = iw * scale, ih * scale
                         img = RLImage(str(img_path), width=w, height=h)
-                        story.append(img)
-                        story.append(Spacer(1, 4 * mm))
+                        story.append(KeepTogether([img, Spacer(1, 2 * mm)]))
                 except Exception:
                     pass
 
@@ -135,9 +143,7 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
             story.append(para("自我剖析", label_style))
             story.append(para(user_notes, body_style))
 
-        story.append(Spacer(1, 6 * mm))
-        if i < len(questions):
-            story.append(PageBreak())
+        story.append(Spacer(1, 4 * mm))
 
     doc.build(story)
     return buf.getvalue()
