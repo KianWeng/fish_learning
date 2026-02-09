@@ -69,12 +69,14 @@ async def wechat_login(body: WechatLoginIn, db: AsyncSession = Depends(get_db)):
         db.add(user)
         await db.flush()
         await db.refresh(user)
+    print(f"[auth/wechat/login] 收到 body: code=*** nickname={body.nickname!r} avatar_url={body.avatar_url!r}")
     if body.nickname is not None:
         user.nickname = body.nickname or None
     if body.avatar_url is not None:
         user.avatar_url = body.avatar_url or None
     await db.flush()
     await db.refresh(user)
+    print(f"[auth/wechat/login] 用户 id={user.id} 保存后 avatar_url={user.avatar_url!r}")
     token = _create_token(user.id)
     return LoginOut(
         token=token,
@@ -105,6 +107,7 @@ async def get_me(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="用户不存在")
+    print(f"[auth/me GET] user_id={user.id} nickname={user.nickname!r} avatar_url={user.avatar_url!r}")
     return UserOut(
         id=user.id,
         openid=user.openid,
