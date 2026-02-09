@@ -1,5 +1,5 @@
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -16,6 +16,45 @@ class ReviewResultBody(BaseModel):
     rating: str  # remember | vague | forget
 
 
+def _question_to_item(q):
+    return {
+        "id": q.id,
+        "subject_id": q.subject_id,
+        "content": q.content,
+        "analysis": q.analysis,
+        "answer": q.answer,
+        "image_url": q.image_url,
+        "next_review_at": q.next_review_at.isoformat() if q.next_review_at else None,
+    }
+
+
+@router.get("/list")
+async def list_reviews(
+    status: str = Query("today", description="today=待复习(到期) scheduled=已排期 new=未开始 all=全部"),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """按复习状态返回题目列表。today=今日待复习，scheduled=已排期(未到期)，new=未开始，all=全部。"""
+    today = date.today()
+    q = (
+        select(Question)
+        .join(Subject, Question.subject_id == Subject.id)
+        .where(Subject.user_id == user_id)
+    )
+    if status == "today":
+        q = q.where(Question.next_review_at <= today)
+    elif status == "scheduled":
+        q = q.where(Question.next_review_at > today)
+    elif status == "new":
+        q = q.where(Question.next_review_at.is_(None))
+    elif status != "all":
+        raise HTTPException(status_code=400, detail="status 须为 today / scheduled / new / all")
+    q = q.order_by(Question.next_review_at.asc().nulls_last(), Question.id.desc())
+    r = await db.execute(q)
+    rows = r.scalars().all()
+    return [_question_to_item(x) for x in rows]
+
+
 @router.get("/today")
 async def today_reviews(
     db: AsyncSession = Depends(get_db),
@@ -29,18 +68,7 @@ async def today_reviews(
         .order_by(Question.next_review_at)
     )
     rows = r.scalars().all()
-    return [
-        {
-            "id": q.id,
-            "subject_id": q.subject_id,
-            "content": q.content,
-            "analysis": q.analysis,
-            "answer": q.answer,
-            "image_url": q.image_url,
-            "next_review_at": q.next_review_at.isoformat() if q.next_review_at else None,
-        }
-        for q in rows
-    ]
+    return [_question_to_item(q) for q in rows]
 
 
 @router.post("/{question_id}/result")
