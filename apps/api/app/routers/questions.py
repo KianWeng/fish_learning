@@ -44,6 +44,17 @@ async def get_question(question_id: int, db: AsyncSession = Depends(get_db)):
     return x
 
 
+@router.delete("/{question_id}")
+async def delete_question(question_id: int, db: AsyncSession = Depends(get_db)):
+    r = await db.execute(select(Question).where(Question.id == question_id))
+    x = r.scalar_one_or_none()
+    if not x:
+        raise HTTPException(status_code=404, detail="错题不存在")
+    await db.delete(x)
+    await db.flush()
+    return {"ok": True}
+
+
 @router.post("", response_model=QuestionResponse)
 async def create_question(body: QuestionCreate, db: AsyncSession = Depends(get_db)):
     today = date.today()
