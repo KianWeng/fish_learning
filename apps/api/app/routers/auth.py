@@ -9,7 +9,8 @@ import jwt
 from app.config import settings
 from app.database import get_db
 from app.models import User
-from app.schemas.auth import WechatLoginIn, UpdateProfileIn, LoginOut, UserOut
+from app.deps import get_current_user_id
+from app.schemas.auth import WechatLoginIn, UpdateProfileIn, LoginOut, UserOut, StorageOut, StorageIncreaseIn
 
 router = APIRouter()
 
@@ -155,4 +156,42 @@ async def update_me(
         nickname=user.nickname,
         avatar_url=user.avatar_url,
         created_at=user.created_at.isoformat() if user.created_at else "",
+    )
+
+
+@router.get("/storage", response_model=StorageOut)
+async def get_storage(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """查询当前用户存储配额与已用空间（字节）。"""
+    r = await db.execute(select(User).where(User.id == user_id))
+    user = r.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    return StorageOut(
+        limit_bytes=user.storage_limit_bytes or 0,
+        used_bytes=user.storage_used_bytes or 0,
+    )
+
+
+@router.post("/storage/increase", response_model=StorageOut)
+async def increase_storage(
+    body: StorageIncreaseIn,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """增加当前用户存储上限（如购买扩容）。生产环境应在支付成功回调或校验购买凭证后调用。"""
+    if body.add_bytes <= 0:
+        raise HTTPException(status_code=400, detail="add_bytes 须为正整数")
+    r = await db.execute(select(User).where(User.id == user_id))
+    user = r.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    user.storage_limit_bytes = (user.storage_limit_bytes or 0) + body.add_bytes
+    await db.flush()
+    await db.refresh(user)
+    return StorageOut(
+        limit_bytes=user.storage_limit_bytes or 0,
+        used_bytes=user.storage_used_bytes or 0,
     )

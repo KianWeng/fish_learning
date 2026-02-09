@@ -7,6 +7,7 @@ from app.deps import get_current_user_id
 from app.models import Subject, Question
 from app.schemas.subject import SubjectCreate, SubjectUpdate, SubjectResponse
 from app.services.export_pdf import export_subject_to_pdf_file
+from app.services.storage import delete_file_by_url
 
 router = APIRouter()
 
@@ -126,5 +127,16 @@ async def delete_subject(
     count = await db.execute(select(func.count(Question.id)).where(Question.subject_id == subject_id))
     if count.scalar() > 0:
         raise HTTPException(status_code=400, detail="该科目下还有错题，无法删除")
+    from app.models import User
+    cover_url_to_del = s.cover_url
     await db.delete(s)
+    await db.flush()
+    if cover_url_to_del:
+        deleted, freed = delete_file_by_url(cover_url_to_del)
+        if deleted and freed and freed > 0:
+            r = await db.execute(select(User).where(User.id == user_id))
+            u = r.scalar_one_or_none()
+            if u:
+                u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
+                await db.flush()
     return {"ok": True}

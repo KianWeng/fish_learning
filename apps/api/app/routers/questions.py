@@ -6,6 +6,7 @@ from app.database import get_db
 from app.deps import get_current_user_id, require_subject_owner, require_subject_owner_for_update
 from app.models import Question, Chapter, Subject
 from app.schemas.question import QuestionCreate, QuestionResponse, QuestionUpdate
+from app.services.storage import delete_file_by_url
 
 router = APIRouter()
 
@@ -87,8 +88,18 @@ async def delete_question(
     if not x:
         raise HTTPException(status_code=404, detail="错题不存在")
     await require_subject_owner(x.subject_id, user_id, db)
+    image_url_to_del = x.image_url
     await db.delete(x)
     await db.flush()
+    if image_url_to_del:
+        from app.models import User
+        deleted, freed = delete_file_by_url(image_url_to_del)
+        if deleted and freed and freed > 0:
+            r = await db.execute(select(User).where(User.id == user_id))
+            u = r.scalar_one_or_none()
+            if u:
+                u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
+                await db.flush()
     return {"ok": True}
 
 

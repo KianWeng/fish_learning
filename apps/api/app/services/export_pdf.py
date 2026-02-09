@@ -158,4 +158,5 @@ def export_subject_to_pdf_file(subject_name: str, questions: list[dict], out_fil
     filename = (out_filename or f"{safe_name}.pdf").encode("utf-8", errors="ignore").decode("utf-8")
     if not filename.endswith(".pdf"):
         filename += ".pdf"
-    return save_upload_file(pdf_bytes, filename, subdir=SUBDIR_PDFS)
+    path, _ = save_upload_file(pdf_bytes, filename, subdir=SUBDIR_PDFS)
+    return path

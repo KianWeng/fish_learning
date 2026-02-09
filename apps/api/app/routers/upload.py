@@ -2,45 +2,83 @@ import logging
 from datetime import date
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.database import get_db
 from fastapi import Depends
 
-from app.services.storage import save_upload_file, save_avatar, save_question_image, SUBDIR_PDFS
+from app.services.storage import (
+    save_upload_file,
+    save_avatar,
+    save_question_image,
+    delete_file_by_url,
+    SUBDIR_PDFS,
+)
 from app.services.llm import analyze_question_image
 from app.routers.files import require_auth
 from app.deps import get_current_user_id, require_subject_owner
 from app.services.pdf_parse import extract_text_by_page, parse_page_to_question
-from app.models import Question, ImportBatch
+from app.models import Question, ImportBatch, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 @router.post("/image")
-async def upload_image(file: UploadFile = File(...)):
-    """上传题目图片，保存到 questions/ 并压缩，返回 /files/questions/..."""
+async def upload_image(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """上传题目图片，保存到 questions/ 并压缩，占用用户存储配额，返回 /files/questions/..."""
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    path = save_question_image(content, file.filename or "image.jpg")
+    path, size = save_question_image(content, file.filename or "image.jpg")
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
+        delete_file_by_url(path)
+        raise HTTPException(
+            status_code=403,
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+        )
+    u.storage_used_bytes = (u.storage_used_bytes or 0) + size
+    await db.flush()
     return {"url": path}
 
 
 @router.post("/image/analyze")
-async def upload_and_analyze(file: UploadFile = File(...)):
-    """上传错题图片并分析（Coze 工作流优先，否则 OpenAI），返回图片 URL 与题目/解析/答案。"""
+async def upload_and_analyze(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """上传错题图片并分析（Coze 工作流优先，否则 OpenAI），占用用户存储配额，返回图片 URL 与题目/解析/答案。"""
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
 
-    # 打印前端传入的图片信息
     filename = file.filename or "image.jpg"
-    size = len(content)
     content_type = file.content_type or ""
-    logger.info("[upload/image/analyze] 收到图片: filename=%s, size=%d bytes, content_type=%s", filename, size, content_type)
-    print(f"[upload/image/analyze] 收到图片: filename={filename}, size={size} bytes, content_type={content_type}")
+    logger.info("[upload/image/analyze] 收到图片: filename=%s, size=%d bytes", filename, len(content))
 
-    path = save_question_image(content, filename)
+    path, file_size = save_question_image(content, filename)
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        delete_file_by_url(path)
+        raise HTTPException(status_code=401, detail="用户不存在")
+    if (u.storage_used_bytes or 0) + file_size > (u.storage_limit_bytes or 0):
+        delete_file_by_url(path)
+        raise HTTPException(
+            status_code=403,
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+        )
+    u.storage_used_bytes = (u.storage_used_bytes or 0) + file_size
+    await db.flush()
+
     result = await analyze_question_image(image_bytes=content)
     response = {
         "url": path,
@@ -76,7 +114,19 @@ async def import_pdf(
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    path = save_upload_file(content, file.filename or "import.pdf", SUBDIR_PDFS)
+    file_size = len(content)
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    if (u.storage_used_bytes or 0) + file_size > (u.storage_limit_bytes or 0):
+        raise HTTPException(
+            status_code=403,
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+        )
+    path, _ = save_upload_file(content, file.filename or "import.pdf", SUBDIR_PDFS)
+    u.storage_used_bytes = (u.storage_used_bytes or 0) + file_size
+    await db.flush()
     batch = ImportBatch(subject_id=subject_id, chapter_id=chapter_id, file_url=path)
     db.add(batch)
     await db.flush()
@@ -111,11 +161,31 @@ async def import_pdf(
 @router.post("/avatar")
 async def upload_avatar(
     file: UploadFile = File(...),
-    _: int = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_auth),
 ):
-    """上传用户头像，保存到 avatars/ 并压缩，返回 /files/avatars/...（需登录）"""
+    """上传用户头像，保存到 avatars/ 并压缩，占用用户存储配额；若已有本地头像会先释放再计入，返回 /files/avatars/..."""
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    path = save_avatar(content, file.filename or "avatar.jpg")
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    old_avatar_url = (u.avatar_url or "").strip()
+    if old_avatar_url and old_avatar_url.startswith("/files/avatars/"):
+        deleted, freed = delete_file_by_url(old_avatar_url)
+        if deleted and freed:
+            u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
+            await db.flush()
+    path, size = save_avatar(content, file.filename or "avatar.jpg")
+    if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
+        delete_file_by_url(path)
+        raise HTTPException(
+            status_code=403,
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+        )
+    u.storage_used_bytes = (u.storage_used_bytes or 0) + size
+    u.avatar_url = path
+    await db.flush()
     return {"url": path}
