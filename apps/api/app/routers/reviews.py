@@ -1,7 +1,7 @@
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -26,6 +26,38 @@ def _question_to_item(q):
         "image_url": q.image_url,
         "next_review_at": q.next_review_at.isoformat() if q.next_review_at else None,
     }
+
+
+# 艾宾浩斯标准序列轮数，review_stage >= 此值视为已进入「已掌握」阶段
+MASTERED_STAGE = 5
+
+
+@router.get("/stats")
+async def review_stats(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """掌握度统计：全部题目数、已掌握数（review_stage>=5 且 next_review_at>今日）。"""
+    today = date.today()
+    total_r = await db.execute(
+        select(func.count(Question.id))
+        .select_from(Question)
+        .join(Subject, Question.subject_id == Subject.id)
+        .where(Subject.user_id == user_id)
+    )
+    total = total_r.scalar() or 0
+    mastered_r = await db.execute(
+        select(func.count(Question.id))
+        .select_from(Question)
+        .join(Subject, Question.subject_id == Subject.id)
+        .where(
+            Subject.user_id == user_id,
+            Question.review_stage >= MASTERED_STAGE,
+            Question.next_review_at > today,
+        )
+    )
+    mastered = mastered_r.scalar() or 0
+    return {"total": total, "mastered": mastered}
 
 
 @router.get("/list")
