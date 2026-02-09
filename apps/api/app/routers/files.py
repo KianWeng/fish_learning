@@ -34,13 +34,18 @@ def require_auth(authorization: str | None = Header(None, alias="Authorization")
     return payload["sub"]
 
 
+# 图片缓存：浏览器/H5 可缓存，减少重复请求（前端小程序侧另有本地文件缓存）
+CACHE_CONTROL_IMAGE = "public, max-age=86400"
+
 @router.get("/avatars/{filename}")
 async def serve_avatar(filename: str):
     """头像文件，公开访问。"""
     path = get_file_path(f"/files/{SUBDIR_AVATARS}/{filename}")
     if not path:
         raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(path, media_type="image/jpeg")
+    resp = FileResponse(path, media_type="image/jpeg")
+    resp.headers["Cache-Control"] = CACHE_CONTROL_IMAGE
+    return resp
 
 
 @router.get("/questions/{filename}")
@@ -49,7 +54,9 @@ async def serve_question_image(filename: str):
     path = get_file_path(f"/files/{SUBDIR_QUESTIONS}/{filename}")
     if not path:
         raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(path, media_type="image/jpeg")
+    resp = FileResponse(path, media_type="image/jpeg")
+    resp.headers["Cache-Control"] = CACHE_CONTROL_IMAGE
+    return resp
 
 
 @router.get("/pdfs/{filename}")
