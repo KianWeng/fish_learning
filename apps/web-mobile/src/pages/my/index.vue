@@ -2,7 +2,7 @@
   <view class="page">
     <view class="profile">
       <view class="avatar-wrap" @click="goLoginIfNeed">
-        <image v-if="userInfo.avatar_url" class="avatar-img" :src="userInfo.avatar_url" mode="aspectFill" />
+        <image v-if="displayAvatarUrl" class="avatar-img" :src="displayAvatarUrl" mode="aspectFill" />
         <text v-else class="avatar-placeholder">👤</text>
       </view>
       <text class="nickname">{{ userInfo.nickname || (isLoggedIn ? '微信用户' : '未登录') }}</text>
@@ -37,19 +37,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import TabBar from '@/components/TabBar.vue'
 import request from '@/api/request.js'
+import { API_BASE_URL } from '@/config.js'
 
 const userInfo = ref({ nickname: '', desc: '', avatar_url: '' })
 const token = ref('')
 
 const isLoggedIn = computed(() => !!token.value)
 
+/** 头像完整 URL：相对路径时拼接 API 基地址，否则小程序/H5 会请求错域名 */
+const displayAvatarUrl = computed(() => {
+  const url = userInfo.value.avatar_url
+  if (!url || typeof url !== 'string') return ''
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  const base = API_BASE_URL.replace(/\/$/, '')
+  return base + (url.startsWith('/') ? url : '/' + url)
+})
+
+watch(displayAvatarUrl, (v) => {
+  console.log('[我的页] displayAvatarUrl 当前值:', v || '(空)')
+}, { immediate: true })
+
 onMounted(() => {
   try {
     token.value = uni.getStorageSync('token') || ''
     const u = uni.getStorageSync('user')
+    console.log('[我的页] onMounted token=', !!token.value, 'storage user=', u, 'avatar_url=', u?.avatar_url)
     if (u && typeof u === 'object') {
       userInfo.value.nickname = u.nickname || ''
       userInfo.value.avatar_url = u.avatar_url || ''
@@ -60,17 +75,24 @@ onMounted(() => {
     }
     const desc = uni.getStorageSync('user_desc')
     if (desc) userInfo.value.desc = desc
-  } catch (e) {}
+    console.log('[我的页] 从 storage 还原后 userInfo.avatar_url=', userInfo.value.avatar_url)
+  } catch (e) {
+    console.warn('[我的页] onMounted 读 storage 异常', e)
+  }
   if (token.value) fetchUser()
 })
 
 async function fetchUser() {
   try {
     const u = await request.get('/auth/me')
+    console.log('[我的页] /auth/me 响应:', u, 'avatar_url=', u?.avatar_url)
     userInfo.value.nickname = u.nickname || userInfo.value.nickname
     userInfo.value.avatar_url = u.avatar_url || ''
     uni.setStorageSync('user', u)
-  } catch (e) {}
+    console.log('[我的页] fetchUser 后 userInfo.avatar_url=', userInfo.value.avatar_url, 'displayAvatarUrl 将使用 API_BASE_URL=', API_BASE_URL)
+  } catch (e) {
+    console.warn('[我的页] fetchUser 失败', e)
+  }
 }
 
 function goLogin() {

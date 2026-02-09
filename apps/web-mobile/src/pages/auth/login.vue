@@ -1,8 +1,29 @@
 <template>
   <view class="page">
     <view class="card">
-      <view class="title">微信一键登录</view>
-      <view class="desc">使用微信账号快速登录错题本</view>
+      <view class="title">微信登录</view>
+      <view class="desc">设置你的昵称和头像后登录</view>
+
+      <view class="form">
+        <view class="avatar-row">
+          <text class="label">头像</text>
+          <button class="avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
+            <image v-if="avatarUrl" class="avatar-img" :src="avatarUrl" mode="aspectFill" />
+            <text v-else class="avatar-placeholder">点击选择</text>
+          </button>
+        </view>
+        <view class="nickname-row">
+          <text class="label">昵称</text>
+          <input
+            v-model="nickname"
+            class="nickname-input"
+            type="nickname"
+            placeholder="请输入昵称或使用微信昵称"
+            placeholder-class="placeholder"
+          />
+        </view>
+      </view>
+
       <button class="btn-login" @click="onLogin">微信一键登录</button>
       <view class="tip">登录即表示同意用户协议与隐私政策</view>
     </view>
@@ -10,7 +31,54 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import request from '@/api/request.js'
+import { API_BASE_URL } from '@/config.js'
+
+const nickname = ref('')
+const avatarUrl = ref('')  // 本地预览：临时路径或已上传的 URL
+let avatarTempPath = ''   // 选择头像后的临时路径，用于上传
+
+function onChooseAvatar(e) {
+  const { avatarUrl: path } = e.detail || {}
+  if (path) {
+    avatarTempPath = path
+    avatarUrl.value = path
+  }
+}
+
+async function uploadAvatar() {
+  if (!avatarTempPath) return null
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: API_BASE_URL + '/upload/image',
+      filePath: avatarTempPath,
+      name: 'file',
+      header: {},
+      success: (res) => {
+        try {
+          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+          console.log('[登录页] 上传头像响应:', res.statusCode, data)
+          if (data.url) {
+            const fullUrl = API_BASE_URL + data.url
+            console.log('[登录页] 头像完整 URL:', fullUrl)
+            resolve(fullUrl)
+          } else {
+            console.warn('[登录页] 上传头像无 url:', data)
+            resolve(null)
+          }
+        } catch (e) {
+          console.warn('[登录页] 解析上传响应失败:', e)
+          resolve(null)
+        }
+      },
+      fail: (err) => {
+        console.warn('[登录页] 上传头像失败:', err)
+        resolve(null)
+      },
+    })
+  })
+}
 
 async function onLogin() {
   try {
@@ -19,12 +87,25 @@ async function onLogin() {
       uni.showToast({ title: '获取登录态失败', icon: 'none' })
       return
     }
-    const res = await request.post('/auth/wechat/login', { code })
+    let avatar_url = null
+    if (avatarTempPath) {
+      uni.showLoading({ title: '上传头像…' })
+      avatar_url = await uploadAvatar()
+      uni.hideLoading()
+    }
+    const payload = {
+      code,
+      nickname: nickname.value.trim() || null,
+      avatar_url,
+    }
+    console.log('[登录页] 登录请求 payload:', { ...payload, code: '***' })
+    const res = await request.post('/auth/wechat/login', payload)
+    console.log('[登录页] 登录成功 res.user:', res.user, 'avatar_url:', res.user?.avatar_url)
     uni.setStorageSync('token', res.token)
     uni.setStorageSync('user', res.user)
     uni.showToast({ title: '登录成功', icon: 'success' })
     setTimeout(() => {
-      uni.switchTab({ url: '/pages/my/index' })
+      uni.reLaunch({ url: '/pages/my/index' })
     }, 500)
   } catch (e) {
     uni.showToast({ title: e.message || '登录失败', icon: 'none' })
@@ -33,10 +114,21 @@ async function onLogin() {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: linear-gradient(180deg, #e8f4ff 0%, #f5f6fa 40%); padding: 120rpx 48rpx; box-sizing: border-box; }
-.card { background: #fff; border-radius: 32rpx; padding: 64rpx 48rpx; box-shadow: 0 8rpx 40rpx rgba(0,0,0,0.08); }
+.page { min-height: 100vh; background: linear-gradient(180deg, #e8f4ff 0%, #f5f6fa 40%); padding: 120rpx 48rpx 80rpx; box-sizing: border-box; }
+.card { background: #fff; border-radius: 32rpx; padding: 48rpx 48rpx 64rpx; box-shadow: 0 8rpx 40rpx rgba(0,0,0,0.08); }
 .title { font-size: 40rpx; font-weight: 600; color: #333; text-align: center; margin-bottom: 16rpx; }
-.desc { font-size: 28rpx; color: #999; text-align: center; margin-bottom: 64rpx; }
+.desc { font-size: 28rpx; color: #999; text-align: center; margin-bottom: 48rpx; }
+.form { margin-bottom: 48rpx; }
+.avatar-row { display: flex; align-items: center; margin-bottom: 32rpx; }
+.avatar-row .label { width: 120rpx; font-size: 30rpx; color: #333; }
+.avatar-btn { width: 160rpx; height: 160rpx; border-radius: 50%; overflow: hidden; padding: 0; margin: 0; background: #f0f0f0; border: 2rpx dashed #ccc; display: flex; align-items: center; justify-content: center; }
+.avatar-btn::after { border: none; }
+.avatar-img { width: 100%; height: 100%; }
+.avatar-placeholder { font-size: 24rpx; color: #999; }
+.nickname-row { display: flex; align-items: center; }
+.nickname-row .label { width: 120rpx; font-size: 30rpx; color: #333; }
+.nickname-input { flex: 1; height: 80rpx; padding: 0 24rpx; font-size: 30rpx; background: #f8f8f8; border-radius: 12rpx; }
+.placeholder { color: #bbb; }
 .btn-login { width: 100%; height: 96rpx; line-height: 96rpx; background: #07c160; color: #fff; font-size: 32rpx; border-radius: 48rpx; border: none; }
 .btn-login::after { border: none; }
 .tip { font-size: 24rpx; color: #999; text-align: center; margin-top: 32rpx; }
