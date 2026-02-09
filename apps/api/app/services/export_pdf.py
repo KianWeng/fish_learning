@@ -13,6 +13,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RL
 
 from app.services.storage import get_file_path, save_upload_file, SUBDIR_PDFS
 
+# A4 可用宽度约 170mm，图片最大宽度；最大高度避免单图占满整页
+IMG_MAX_WIDTH = 170 * mm
+IMG_MAX_HEIGHT = 220 * mm
+
 # 中文字体：优先 CID，否则用 Helvetica（中文会显示为方框）
 def _register_chinese_font():
     try:
@@ -99,9 +103,15 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
                 img_path = get_file_path(image_url)
             if img_path and img_path.is_file():
                 try:
-                    img = RLImage(str(img_path), width=150 * mm, height=200 * mm)
-                    story.append(img)
-                    story.append(Spacer(1, 4 * mm))
+                    from PIL import Image as PILImage
+                    with PILImage.open(img_path) as pil_img:
+                        iw, ih = pil_img.size
+                    if iw > 0 and ih > 0:
+                        scale = min(IMG_MAX_WIDTH / iw, IMG_MAX_HEIGHT / ih, 1.0)
+                        w, h = iw * scale, ih * scale
+                        img = RLImage(str(img_path), width=w, height=h)
+                        story.append(img)
+                        story.append(Spacer(1, 4 * mm))
                 except Exception:
                     pass
 
