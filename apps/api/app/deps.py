@@ -41,3 +41,18 @@ async def require_subject_owner(
     if not s:
         raise HTTPException(status_code=404, detail="科目不存在")
     return s
+
+
+async def require_subject_owner_for_update(
+    subject_id: int,
+    user_id: int,
+    db: AsyncSession,
+) -> Subject:
+    """校验 subject 属于当前用户并加行锁（FOR UPDATE），用于与删除科目互斥。"""
+    r = await db.execute(
+        select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id).with_for_update()
+    )
+    s = r.scalar_one_or_none()
+    if not s:
+        raise HTTPException(status_code=404, detail="科目不存在")
+    return s

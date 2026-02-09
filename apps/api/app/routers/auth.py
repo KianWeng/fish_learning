@@ -3,6 +3,7 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 import jwt
 
 from app.config import settings
@@ -65,10 +66,17 @@ async def wechat_login(body: WechatLoginIn, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.openid == openid))
     user = result.scalar_one_or_none()
     if not user:
-        user = User(openid=openid, unionid=unionid)
-        db.add(user)
-        await db.flush()
-        await db.refresh(user)
+        try:
+            user = User(openid=openid, unionid=unionid)
+            db.add(user)
+            await db.flush()
+            await db.refresh(user)
+        except IntegrityError:
+            await db.rollback()
+            result = await db.execute(select(User).where(User.openid == openid))
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(status_code=500, detail="登录冲突，请重试")
     print(f"[auth/wechat/login] 收到 body: code=*** nickname={body.nickname!r} avatar_url={body.avatar_url!r}")
     if body.nickname is not None:
         user.nickname = body.nickname or None

@@ -117,7 +117,9 @@ async def delete_subject(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    r = await db.execute(select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id))
+    r = await db.execute(
+        select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id).with_for_update()
+    )
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(status_code=404, detail="科目不存在")

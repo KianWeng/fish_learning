@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.deps import get_current_user_id, require_subject_owner
+from app.deps import get_current_user_id, require_subject_owner, require_subject_owner_for_update
 from app.models import Question, Chapter, Subject
 from app.schemas.question import QuestionCreate, QuestionResponse, QuestionUpdate
 
@@ -98,7 +98,7 @@ async def create_question(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    await require_subject_owner(body.subject_id, user_id, db)
+    await require_subject_owner_for_update(body.subject_id, user_id, db)
     today = date.today()
     q = Question(
         subject_id=body.subject_id,
