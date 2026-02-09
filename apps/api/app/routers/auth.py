@@ -1,6 +1,6 @@
 import time
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
@@ -89,7 +89,10 @@ async def wechat_login(body: WechatLoginIn, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserOut)
-async def get_me(authorization: str | None = None, db: AsyncSession = Depends(get_db)):
+async def get_me(
+    authorization: str | None = Header(None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
     """根据请求头 Authorization: Bearer <token> 返回当前用户信息。"""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
@@ -114,7 +117,7 @@ async def get_me(authorization: str | None = None, db: AsyncSession = Depends(ge
 @router.patch("/me", response_model=UserOut)
 async def update_me(
     body: UpdateProfileIn,
-    authorization: str | None = None,
+    authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ):
     """更新当前用户昵称、头像。"""
