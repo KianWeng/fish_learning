@@ -45,7 +45,7 @@
     <view class="list" v-if="filteredList.length">
       <view class="list-item" v-for="q in filteredList" :key="q.id" @click="toggleSelect(q.id)">
         <view class="item-thumb">
-          <image v-if="questionImageUrl(q)" class="item-thumb-img" :src="questionImageUrl(q)" mode="aspectFill" />
+          <CachedImage v-if="questionImageUrl(q)" img-class="item-thumb-img" :src="questionImageUrl(q)" mode="aspectFill" />
           <text v-else class="item-thumb-placeholder">题</text>
         </view>
         <view class="item-main">
@@ -79,6 +79,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
+import CachedImage from '@/components/CachedImage.vue'
 import { getReviewList, getReviewStats } from '@/api/reviews.js'
 import { listSubjects } from '@/api/subjects.js'
 import { API_BASE_URL } from '@/config.js'

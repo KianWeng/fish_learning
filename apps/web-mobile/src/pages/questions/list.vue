@@ -19,7 +19,7 @@
           @click="goChapters(s)"
         >
           <view class="card-cover has-img">
-            <image :src="getSubjectCoverUrl(s)" mode="aspectFill" class="cover-img" />
+            <CachedImage :src="getSubjectCoverUrl(s)" mode="aspectFill" img-class="cover-img" img-style="width: 100%; height: 100%; display: block;" />
             <view class="card-menu-btn" @click.stop="openCardMenu(s)">
               <view class="menu-dot"></view>
               <view class="menu-dot"></view>
@@ -52,6 +52,7 @@
 import { ref, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
+import CachedImage from '@/components/CachedImage.vue'
 import { API_BASE_URL } from '@/config.js'
 import { getSubjectCoverUrl } from '@/utils/cover.js'
 import { listSubjects, updateSubject, deleteSubject, exportSubjectPdf } from '@/api/subjects.js'
@@ -268,7 +269,16 @@ onMounted(() => {
   box-shadow: var(--shadow-card);
 }
 .card-cover { height: 180rpx; position: relative; overflow: hidden; }
-.cover-img { width: 100%; height: 100%; display: block; }
+.cover-img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
 .card-menu-btn {
   position: absolute; top: 8rpx; right: 8rpx;
   width: 40rpx; height: 40rpx;

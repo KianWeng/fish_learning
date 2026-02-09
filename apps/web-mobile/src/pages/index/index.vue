@@ -42,7 +42,7 @@
           @click="goQuestions(s)"
         >
           <view class="quick-cover">
-            <image class="quick-cover-img" :src="getSubjectCoverUrl(s)" mode="aspectFill" />
+            <CachedImage img-class="quick-cover-img" :src="getSubjectCoverUrl(s)" mode="aspectFill" img-style="width: 100%; height: 100%; display: block;" />
           </view>
           <view class="quick-cover-overlay"></view>
           <view class="quick-content">
@@ -89,6 +89,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import TabBar from '@/components/TabBar.vue'
+import CachedImage from '@/components/CachedImage.vue'
 import { getTodayReviews } from '@/api/reviews.js'
 import { listSubjects } from '@/api/subjects.js'
 import { getSubjectCoverUrl } from '@/utils/cover.js'
@@ -266,8 +267,13 @@ onMounted(load)
   z-index: 0;
 }
 .quick-card-subject .quick-cover-img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
   display: block;
 }
 .quick-card-subject .quick-cover-overlay {

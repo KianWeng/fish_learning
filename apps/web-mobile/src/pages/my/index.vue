@@ -2,7 +2,7 @@
   <view class="page">
     <view class="profile">
       <view class="avatar-wrap" @click="goLoginIfNeed">
-        <image v-if="displayAvatarUrl" class="avatar-img" :src="displayAvatarUrl" mode="aspectFill" />
+        <CachedImage v-if="displayAvatarUrl" img-class="avatar-img" :src="displayAvatarUrl" mode="aspectFill" img-style="width: 100%; height: 100%; display: block;" />
         <text v-else class="avatar-placeholder">👤</text>
       </view>
       <text class="nickname">{{ userInfo.nickname || (isLoggedIn ? '微信用户' : '未登录') }}</text>
@@ -39,6 +39,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import TabBar from '@/components/TabBar.vue'
+import CachedImage from '@/components/CachedImage.vue'
 import request from '@/api/request.js'
 import { API_BASE_URL } from '@/config.js'
 
@@ -139,10 +140,16 @@ function goImportPdf() {
   margin: 0 auto 24rpx;
   border-radius: 50%;
   background: var(--primary-bg);
-  display: flex; align-items: center; justify-content: center;
+  position: relative;
   overflow: hidden;
 }
-.avatar-img { width: 100%; height: 100%; }
+.avatar-img {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
 .avatar-placeholder { font-size: 80rpx; }
 .nickname { font-size: 36rpx; font-weight: 600; color: var(--text); display: block; }
 .desc { font-size: 26rpx; color: var(--text-hint); margin-top: 12rpx; display: block; }

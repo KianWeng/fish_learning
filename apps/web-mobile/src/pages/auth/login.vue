@@ -8,7 +8,7 @@
         <view class="avatar-row">
           <text class="label">头像</text>
           <button class="avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
-            <image v-if="avatarUrl" class="avatar-img" :src="avatarUrl" mode="aspectFill" />
+            <CachedImage v-if="avatarUrl" img-class="avatar-img" :src="avatarUrl" mode="aspectFill" img-style="width: 100%; height: 100%; display: block;" />
             <text v-else class="avatar-placeholder">点击选择</text>
           </button>
         </view>
@@ -32,6 +32,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import CachedImage from '@/components/CachedImage.vue'
 import request from '@/api/request.js'
 import { API_BASE_URL } from '@/config.js'
 
@@ -121,9 +122,15 @@ async function onLogin() {
 .form { margin-bottom: 48rpx; }
 .avatar-row { display: flex; align-items: center; margin-bottom: 32rpx; }
 .avatar-row .label { width: 120rpx; font-size: 30rpx; color: var(--text); }
-.avatar-btn { width: 160rpx; height: 160rpx; border-radius: 50%; overflow: hidden; padding: 0; margin: 0; background: var(--bg-page); border: 2rpx dashed var(--text-hint); display: flex; align-items: center; justify-content: center; }
+.avatar-btn { width: 160rpx; height: 160rpx; border-radius: 50%; overflow: hidden; padding: 0; margin: 0; background: var(--bg-page); border: 2rpx dashed var(--text-hint); position: relative; }
 .avatar-btn::after { border: none; }
-.avatar-img { width: 100%; height: 100%; }
+.avatar-img {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
 .avatar-placeholder { font-size: 24rpx; color: var(--text-hint); }
 .nickname-row { display: flex; align-items: center; }
 .nickname-row .label { width: 120rpx; font-size: 30rpx; color: var(--text); }

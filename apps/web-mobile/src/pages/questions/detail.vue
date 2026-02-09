@@ -1,7 +1,7 @@
 <template>
   <view class="page" v-if="q">
     <view class="card img-card" v-if="q.image_url" @click="openImagePreview">
-      <image v-if="imageFullUrl" :src="imageFullUrl" mode="widthFix" class="img" @error="onImageError" />
+      <CachedImage v-if="imageFullUrl" img-class="img" :src="imageFullUrl" mode="widthFix" @error="onImageError" />
       <view v-else class="img-placeholder">图片加载失败</view>
       <text class="img-tap-hint">点击放大查看</text>
     </view>
@@ -41,23 +41,21 @@
       <text class="debug-toggle-text">{{ showDebug ? '隐藏' : '显示' }}调试信息</text>
     </view>
   </view>
-  <!-- 图片预览弹窗：双指缩放、可滚动查看全图、工具栏 +/- -->
+  <view class="page empty" v-else-if="!loading">{{ loadFailReason || '加载失败，请返回重试' }}</view>
+  <view class="page empty" v-else>加载中...</view>
+
+  <!-- 图片预览：双指捏合 + transform scale，居中显示，比例正确，+/- 有效（与上面 v-if 链无关） -->
   <view class="image-preview-mask" v-if="imagePreviewVisible" @click="closeImagePreview">
     <view
-      class="image-preview-wrap"
+      class="image-preview-area-wrap"
       @click.stop
-      @touchstart="onPreviewTouchStart"
-      @touchmove="onPreviewTouchMove"
-      @touchend="onPreviewTouchEnd"
-      @touchcancel="onPreviewTouchEnd"
+      @touchstart.capture="onPreviewTouchStart"
+      @touchmove.capture="onPreviewTouchMove"
+      @touchend.capture="onPreviewTouchEnd"
+      @touchcancel.capture="onPreviewTouchEnd"
     >
-      <view class="image-preview-inner" :style="{ width: imagePreviewScale * 100 + '%' }">
-        <image
-          v-if="imageFullUrl"
-          class="image-preview-img"
-          :src="imageFullUrl"
-          mode="widthFix"
-        />
+      <view class="image-preview-inner" :style="previewInnerStyle">
+        <CachedImage v-if="imageFullUrl" img-class="image-preview-img" :src="imageFullUrl" mode="widthFix" />
       </view>
     </view>
     <view class="image-preview-toolbar" @click.stop>
@@ -67,15 +65,12 @@
       <button class="toolbar-close" @click.stop="closeImagePreview">关闭</button>
     </view>
   </view>
-
-  <view class="page empty" v-else-if="!loading">加载失败</view>
-  <view class="page empty" v-else>加载中...</view>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { getQuestion, updateQuestion } from '@/api/questions.js'
-
+import CachedImage from '@/components/CachedImage.vue'
 import { API_BASE_URL } from '@/config.js'
 
 const q = ref(null)
@@ -83,14 +78,21 @@ const loading = ref(true)
 const imageFullUrl = ref('')
 const showDebug = ref(false)
 
+/** 加载失败时显示的具体原因，便于排查 */
+const loadFailReason = ref('')
 const imagePreviewVisible = ref(false)
 const imagePreviewScale = ref(1)
 const MIN_SCALE = 0.5
 const MAX_SCALE = 3
 const SCALE_STEP = 0.25
-// 双指捏合：记录 pinch 开始时的两指距离与当前 scale
 let pinchStartDistance = 0
 let pinchStartScale = 1
+
+/** 用 transform 缩放，保持比例；居中显示 */
+const previewInnerStyle = computed(() => ({
+  transform: `scale(${imagePreviewScale.value})`,
+  transformOrigin: 'center center'
+}))
 
 const userNotes = ref('')
 let saveNotesTimer = null
@@ -112,17 +114,19 @@ watch(() => q.value?.user_notes, (val) => {
 }, { immediate: true })
 
 function getTouches(e) {
-  return (e.touches && e.touches.length) ? e.touches : (e.detail && e.detail.touches) || []
+  const ev = e && (e.mp || e)
+  const t = (ev && ev.touches && ev.touches.length) ? ev.touches : (e && e.detail && e.detail.touches) || []
+  return Array.isArray(t) ? t : []
 }
 
 function getTouchDistance(touches) {
   if (!touches || touches.length < 2) return 0
   const a = touches[0]
   const b = touches[1]
-  const ax = a.clientX != null ? a.clientX : a.x
-  const ay = a.clientY != null ? a.clientY : a.y
-  const bx = b.clientX != null ? b.clientX : b.x
-  const by = b.clientY != null ? b.clientY : b.y
+  const ax = a.clientX != null ? a.clientX : (a.pageX != null ? a.pageX : a.x)
+  const ay = a.clientY != null ? a.clientY : (a.pageY != null ? a.pageY : a.y)
+  const bx = b.clientX != null ? b.clientX : (b.pageX != null ? b.pageX : b.x)
+  const by = b.clientY != null ? b.clientY : (b.pageY != null ? b.pageY : b.y)
   return Math.hypot(bx - ax, by - ay)
 }
 
@@ -136,26 +140,33 @@ function onPreviewTouchStart(e) {
 
 function onPreviewTouchMove(e) {
   const touches = getTouches(e)
-  if (touches.length === 2 && pinchStartDistance > 0) {
-    if (e.preventDefault) e.preventDefault()
+  if (touches.length === 2) {
+    if (pinchStartDistance <= 0) {
+      pinchStartDistance = getTouchDistance(touches)
+      pinchStartScale = imagePreviewScale.value
+    }
+    try {
+      e.stopPropagation && e.stopPropagation()
+      e.preventDefault && e.preventDefault()
+    } catch (_) {}
     const d = getTouchDistance(touches)
-    const scale = (pinchStartScale * d) / pinchStartDistance
-    imagePreviewScale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale))
+    if (pinchStartDistance > 0 && d > 0) {
+      const scale = (pinchStartScale * d) / pinchStartDistance
+      imagePreviewScale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale))
+    }
   }
 }
 
 function onPreviewTouchEnd(e) {
   const touches = getTouches(e)
-  if (touches.length < 2) {
-    pinchStartDistance = 0
-  }
+  if (!touches || touches.length < 2) pinchStartDistance = 0
 }
 
 function openImagePreview() {
   if (!imageFullUrl.value) return
   imagePreviewScale.value = 1
-  imagePreviewVisible.value = true
   pinchStartDistance = 0
+  imagePreviewVisible.value = true
 }
 
 function closeImagePreview() {
@@ -209,11 +220,16 @@ onMounted(async () => {
   const pages = getCurrentPages()
   const page = pages[pages.length - 1]
   const id = parseInt((page.options || {}).id, 10)
-  if (!id) { loading.value = false; return }
+  if (!id) {
+    loadFailReason.value = '缺少题目 ID，请从错题列表进入'
+    loading.value = false
+    return
+  }
   try {
     q.value = await getQuestion(id)
   } catch (e) {
-    uni.showToast({ title: e.message || '加载失败', icon: 'none' })
+    loadFailReason.value = e.message || '网络或服务器异常，请返回重试'
+    uni.showToast({ title: loadFailReason.value, icon: 'none' })
   } finally {
     loading.value = false
   }
@@ -233,7 +249,7 @@ onMounted(async () => {
 .img-placeholder { padding: 48rpx; text-align: center; color: var(--text-hint); font-size: 28rpx; background: var(--bg-page); border-radius: 12rpx; }
 
 .image-preview-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 999; display: flex; flex-direction: column; }
-.image-preview-wrap { flex: 1; width: 100%; min-height: 0; overflow: auto; padding: 40rpx; box-sizing: border-box; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; align-items: center; }
+.image-preview-area-wrap { flex: 1; width: 100%; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; align-items: center; padding: 40rpx; box-sizing: border-box; }
 .image-preview-inner { flex: 0 0 auto; }
 .image-preview-img { display: block; width: 100%; }
 .image-preview-toolbar { position: absolute; bottom: 0; left: 0; right: 0; padding: 24rpx 32rpx  env(safe-area-inset-bottom); background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; gap: 24rpx; }
