@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import String, Integer
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -14,3 +14,5 @@ class User(Base):
     nickname: Mapped[str | None] = mapped_column(String(128), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    subjects = relationship("Subject", back_populates="user", cascade="all, delete-orphan")

@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.models import Question
+from app.deps import get_current_user_id, require_subject_owner
+from app.models import Question, Chapter, Subject
 from app.schemas.question import QuestionCreate, QuestionResponse
 
 router = APIRouter()
@@ -12,13 +13,20 @@ router = APIRouter()
 @router.get("", response_model=list[dict])
 async def list_questions(
     db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
     subject_id: int | None = None,
     chapter_id: int | None = None,
 ):
-    q = select(Question)
+    q = select(Question).join(Subject, Question.subject_id == Subject.id).where(Subject.user_id == user_id)
     if subject_id is not None:
+        await require_subject_owner(subject_id, user_id, db)
         q = q.where(Question.subject_id == subject_id)
     if chapter_id is not None:
+        r = await db.execute(select(Chapter).where(Chapter.id == chapter_id))
+        c = r.scalar_one_or_none()
+        if not c:
+            raise HTTPException(status_code=404, detail="章节不存在")
+        await require_subject_owner(c.subject_id, user_id, db)
         q = q.where(Question.chapter_id == chapter_id)
     q = q.order_by(Question.created_at.desc())
     r = await db.execute(q)
@@ -36,27 +44,42 @@ async def list_questions(
 
 
 @router.get("/{question_id}", response_model=QuestionResponse)
-async def get_question(question_id: int, db: AsyncSession = Depends(get_db)):
+async def get_question(
+    question_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
     r = await db.execute(select(Question).where(Question.id == question_id))
     x = r.scalar_one_or_none()
     if not x:
         raise HTTPException(status_code=404, detail="错题不存在")
+    await require_subject_owner(x.subject_id, user_id, db)
     return x
 
 
 @router.delete("/{question_id}")
-async def delete_question(question_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_question(
+    question_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
     r = await db.execute(select(Question).where(Question.id == question_id))
     x = r.scalar_one_or_none()
     if not x:
         raise HTTPException(status_code=404, detail="错题不存在")
+    await require_subject_owner(x.subject_id, user_id, db)
     await db.delete(x)
     await db.flush()
     return {"ok": True}
 
 
 @router.post("", response_model=QuestionResponse)
-async def create_question(body: QuestionCreate, db: AsyncSession = Depends(get_db)):
+async def create_question(
+    body: QuestionCreate,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    await require_subject_owner(body.subject_id, user_id, db)
     today = date.today()
     q = Question(
         subject_id=body.subject_id,

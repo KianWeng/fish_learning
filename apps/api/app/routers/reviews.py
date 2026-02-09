@@ -5,7 +5,8 @@ from sqlalchemy import select
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models import Question
+from app.deps import get_current_user_id, require_subject_owner
+from app.models import Question, Subject
 from app.services.ebbinghaus import next_review_date
 
 router = APIRouter()
@@ -16,10 +17,16 @@ class ReviewResultBody(BaseModel):
 
 
 @router.get("/today")
-async def today_reviews(db: AsyncSession = Depends(get_db)):
+async def today_reviews(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
     today = date.today()
     r = await db.execute(
-        select(Question).where(Question.next_review_at <= today).order_by(Question.next_review_at)
+        select(Question)
+        .join(Subject, Question.subject_id == Subject.id)
+        .where(Subject.user_id == user_id, Question.next_review_at <= today)
+        .order_by(Question.next_review_at)
     )
     rows = r.scalars().all()
     return [
@@ -41,6 +48,7 @@ async def submit_review_result(
     question_id: int,
     body: ReviewResultBody,
     db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
     if body.rating not in ("remember", "vague", "forget"):
         raise HTTPException(status_code=400, detail="rating 须为 remember / vague / forget")
@@ -48,6 +56,7 @@ async def submit_review_result(
     q = r.scalar_one_or_none()
     if not q:
         raise HTTPException(status_code=404, detail="错题不存在")
+    await require_subject_owner(q.subject_id, user_id, db)
     today = date.today()
     interval = q.interval_days or 1
     stage = q.review_stage or 0

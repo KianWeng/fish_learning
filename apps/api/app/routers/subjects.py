@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
+from app.deps import get_current_user_id
 from app.models import Subject, Question
 from app.schemas.subject import SubjectCreate, SubjectUpdate, SubjectResponse
 
@@ -9,14 +10,23 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[SubjectResponse])
-async def list_subjects(db: AsyncSession = Depends(get_db)):
-    r = await db.execute(select(Subject).order_by(Subject.sort, Subject.id))
+async def list_subjects(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    r = await db.execute(
+        select(Subject).where(Subject.user_id == user_id).order_by(Subject.sort, Subject.id)
+    )
     return list(r.scalars().all())
 
 
 @router.get("/{subject_id}", response_model=SubjectResponse)
-async def get_subject(subject_id: int, db: AsyncSession = Depends(get_db)):
-    r = await db.execute(select(Subject).where(Subject.id == subject_id))
+async def get_subject(
+    subject_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    r = await db.execute(select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(status_code=404, detail="科目不存在")
@@ -24,8 +34,12 @@ async def get_subject(subject_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", response_model=SubjectResponse)
-async def create_subject(body: SubjectCreate, db: AsyncSession = Depends(get_db)):
-    s = Subject(name=body.name, sort=body.sort, cover_url=body.cover_url)
+async def create_subject(
+    body: SubjectCreate,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    s = Subject(user_id=user_id, name=body.name, sort=body.sort, cover_url=body.cover_url)
     db.add(s)
     await db.flush()
     await db.refresh(s)
@@ -33,8 +47,13 @@ async def create_subject(body: SubjectCreate, db: AsyncSession = Depends(get_db)
 
 
 @router.put("/{subject_id}", response_model=SubjectResponse)
-async def update_subject(subject_id: int, body: SubjectUpdate, db: AsyncSession = Depends(get_db)):
-    r = await db.execute(select(Subject).where(Subject.id == subject_id))
+async def update_subject(
+    subject_id: int,
+    body: SubjectUpdate,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    r = await db.execute(select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(status_code=404, detail="科目不存在")
@@ -50,8 +69,12 @@ async def update_subject(subject_id: int, body: SubjectUpdate, db: AsyncSession 
 
 
 @router.delete("/{subject_id}")
-async def delete_subject(subject_id: int, db: AsyncSession = Depends(get_db)):
-    r = await db.execute(select(Subject).where(Subject.id == subject_id))
+async def delete_subject(
+    subject_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    r = await db.execute(select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id))
     s = r.scalar_one_or_none()
     if not s:
         raise HTTPException(status_code=404, detail="科目不存在")

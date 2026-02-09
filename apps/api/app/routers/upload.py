@@ -8,6 +8,7 @@ from fastapi import Depends
 from app.services.storage import save_upload_file, save_avatar, save_question_image, SUBDIR_PDFS
 from app.services.llm import analyze_question_image
 from app.routers.files import require_auth
+from app.deps import get_current_user_id, require_subject_owner
 from app.services.pdf_parse import extract_text_by_page, parse_page_to_question
 from app.models import Question, ImportBatch
 
@@ -63,13 +64,15 @@ async def upload_and_analyze(file: UploadFile = File(...)):
 @router.post("/pdf/import")
 async def import_pdf(
     db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
     file: UploadFile = File(...),
     subject_id: int = Form(...),
     chapter_id: int | None = Form(None),
 ):
-    """上传 PDF，按页解析为错题并写入指定科目/章节。"""
+    """上传 PDF，按页解析为错题并写入指定科目/章节（仅限本人科目）。"""
     if subject_id is None:
         raise HTTPException(status_code=400, detail="缺少 subject_id")
+    await require_subject_owner(subject_id, user_id, db)
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
