@@ -115,8 +115,11 @@ async function load() {
   }
 }
 
+/** 进入该错题本的内容页（章节列表） */
 function goQuestions(s) {
-  uni.navigateTo({ url: `/pages/questions/list?subject_id=${s.id}` })
+  uni.navigateTo({
+    url: `/pages/chapters/list?subject_id=${s.id}&subject_name=${encodeURIComponent(s.name || '')}`
+  })
 }
 
 /** 添加：新建错题本 或 拍照添加题目 */
