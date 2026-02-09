@@ -26,6 +26,7 @@ class Question(Base):
     review_stage: Mapped[int] = mapped_column(Integer, default=0)
     interval_days: Mapped[int] = mapped_column(Integer, default=1)
     import_batch_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("import_batches.id", ondelete="SET NULL"), nullable=True)
+    user_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     subject = relationship("Subject", back_populates="questions")

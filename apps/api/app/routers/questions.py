@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.deps import get_current_user_id, require_subject_owner
 from app.models import Question, Chapter, Subject
-from app.schemas.question import QuestionCreate, QuestionResponse
+from app.schemas.question import QuestionCreate, QuestionResponse, QuestionUpdate
 
 router = APIRouter()
 
@@ -54,6 +54,25 @@ async def get_question(
     if not x:
         raise HTTPException(status_code=404, detail="错题不存在")
     await require_subject_owner(x.subject_id, user_id, db)
+    return x
+
+
+@router.patch("/{question_id}", response_model=QuestionResponse)
+async def update_question(
+    question_id: int,
+    body: QuestionUpdate,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    r = await db.execute(select(Question).where(Question.id == question_id))
+    x = r.scalar_one_or_none()
+    if not x:
+        raise HTTPException(status_code=404, detail="错题不存在")
+    await require_subject_owner(x.subject_id, user_id, db)
+    for key, value in body.model_dump(exclude_unset=True).items():
+        setattr(x, key, value)
+    await db.flush()
+    await db.refresh(x)
     return x
 
 

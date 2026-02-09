@@ -12,6 +12,10 @@ class QuestionCreate(BaseModel):
     source: str = "photo"
 
 
+class QuestionUpdate(BaseModel):
+    user_notes: str | None = None
+
+
 class QuestionResponse(BaseModel):
     id: int
     subject_id: int
@@ -24,6 +28,7 @@ class QuestionResponse(BaseModel):
     next_review_at: date | None
     review_stage: int
     interval_days: int
+    user_notes: str | None
     created_at: datetime
 
     class Config:
