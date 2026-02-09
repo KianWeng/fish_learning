@@ -26,7 +26,7 @@
     </view>
     <view class="card question-card empty-q" v-else-if="!loading">
       <text class="empty-text">今日暂无待复习</text>
-      <navigator url="/pages/questions/add" class="link">去添加错题</navigator>
+      <text class="link" @click="onAddTap">去添加错题</text>
     </view>
 
     <!-- 快捷访问 -->
@@ -38,7 +38,7 @@
           <text class="quick-name">{{ s.name }}</text>
           <text class="quick-desc">查看错题</text>
         </view>
-        <view class="quick-card add-card" @click="goAdd">
+        <view class="quick-card add-card" @click="onAddTap">
           <view class="quick-icon add-icon">+</view>
           <text class="quick-name">新建</text>
         </view>
@@ -100,8 +100,18 @@ function goQuestions(s) {
   uni.navigateTo({ url: `/pages/questions/list?subject_id=${s.id}` })
 }
 
-function goAdd() {
-  uni.navigateTo({ url: '/pages/questions/add' })
+/** 添加：新建错题本 或 拍照添加题目 */
+function onAddTap() {
+  uni.showActionSheet({
+    itemList: ['新建错题本', '拍照添加题目'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        uni.navigateTo({ url: '/pages/subjects/create-with-photo' })
+      } else if (res.tapIndex === 1) {
+        uni.reLaunch({ url: '/pages/questions/list?openCamera=1' })
+      }
+    }
+  })
 }
 
 onMounted(load)

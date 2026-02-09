@@ -16,13 +16,13 @@
     </view>
     <view class="empty" v-else>加载中...</view>
 
-    <view class="float-btn" @click="goAdd">+</view>
+    <view class="float-btn" @click="onAddTap">+</view>
   </view>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { listQuestions } from '@/api/questions.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 
@@ -60,6 +60,23 @@ function openCameraThenCrop() {
   })
 }
 
+/** 点击添加：新建章节目录 或 拍照添加题目 */
+function onAddTap() {
+  uni.showActionSheet({
+    itemList: ['新建章节目录', '拍照添加题目'],
+    success: (res) => {
+      if (res.tapIndex === 0) goNewChapter()
+      else if (res.tapIndex === 1) openCameraThenCrop()
+    }
+  })
+}
+
+function goNewChapter() {
+  uni.navigateTo({
+    url: `/pages/chapters/edit?subject_id=${subjectId.value}&subject_name=${encodeURIComponent(subjectName.value)}`
+  })
+}
+
 function goAdd() {
   openCameraThenCrop()
 }
@@ -68,16 +85,22 @@ function addPageUrl() {
   return `/pages/questions/add?subject_id=${subjectId.value}&chapter_id=${chapterId.value}&subject_name=${encodeURIComponent(subjectName.value)}&chapter_name=${encodeURIComponent(chapterName.value)}`
 }
 
-function initFromOptions() {
-  const pages = getCurrentPages()
-  const page = pages[pages.length - 1]
-  const opts = page.options || {}
+function initFromOptions(opts) {
+  if (!opts) {
+    const pages = getCurrentPages()
+    const page = pages[pages.length - 1]
+    opts = page.options || {}
+  }
   subjectId.value = parseInt(opts.subject_id, 10) || 0
   chapterId.value = parseInt(opts.chapter_id, 10) || 0
   subjectName.value = opts.subject_name ? decodeURIComponent(opts.subject_name) : ''
   chapterName.value = opts.chapter_name ? decodeURIComponent(opts.chapter_name) : ''
-  uni.setNavigationBarTitle({ title: chapterName.value || '章节错题' })
+  uni.setNavigationBarTitle({ title: chapterName.value || '' })
 }
+
+onLoad((opts) => {
+  initFromOptions(opts)
+})
 
 onMounted(() => {
   initFromOptions()

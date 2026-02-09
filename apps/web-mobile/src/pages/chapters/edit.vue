@@ -16,22 +16,34 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { createChapter, updateChapter } from '@/api/chapters.js'
 
 const id = ref(null)
 const subjectId = ref(0)
 const form = ref({ name: '', sort: 0 })
 
-onMounted(() => {
-  const pages = getCurrentPages()
-  const page = pages[pages.length - 1]
-  const opts = page.options || {}
+function applyOptions(opts) {
+  if (!opts) return
   subjectId.value = parseInt(opts.subject_id, 10) || 0
   if (opts.id) {
     id.value = parseInt(opts.id, 10)
     form.value.name = opts.name ? decodeURIComponent(opts.name) : ''
     form.value.sort = parseInt(opts.sort, 10) || 0
+    uni.setNavigationBarTitle({ title: form.value.name || '' })
+  } else {
+    uni.setNavigationBarTitle({ title: '' })
   }
+}
+
+onLoad((opts) => {
+  applyOptions(opts)
+})
+
+onMounted(() => {
+  const pages = getCurrentPages()
+  const page = pages[pages.length - 1]
+  applyOptions(page.options || {})
 })
 
 async function submit() {

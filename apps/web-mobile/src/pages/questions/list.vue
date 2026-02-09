@@ -4,7 +4,7 @@
       <text class="title">我的错题本</text>
       <text class="sub" v-if="list.length">{{ list.length }} 个</text>
       <view class="header-right">
-        <text class="link" @click="goCreateWithPhoto">新建错题本</text>
+        <text class="link" @click="onAddTap">添加</text>
         <text class="link" @click="goStats">数据统计</text>
         <text class="link" @click="goAllQuestions">全部错题</text>
       </view>
@@ -39,10 +39,10 @@
     </view>
     <view class="empty" v-else-if="!loading">
       <text class="empty-text">暂无错题本</text>
-      <text class="empty-hint">点击右下角 + 拍照添加错题，或点「新建错题本」先建本</text>
+      <text class="empty-hint">点击右下角 + 可选择「新建错题本」或「拍照添加题目」</text>
     </view>
 
-    <view class="float-btn" @click="goAddWithCamera">+</view>
+    <view class="float-btn" @click="onAddTap">+</view>
 
     <view class="tabbar-placeholder" />
     <TabBar current="questions" />
@@ -51,7 +51,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
 import { listSubjects, updateSubject, deleteSubject } from '@/api/subjects.js'
@@ -166,9 +166,24 @@ function openCameraThenCrop() {
   })
 }
 
+/** 点击添加：可选新建错题本或拍照添加题目 */
+function onAddTap() {
+  uni.showActionSheet({
+    itemList: ['新建错题本', '拍照添加题目'],
+    success: (res) => {
+      if (res.tapIndex === 0) goCreateWithPhoto()
+      else if (res.tapIndex === 1) openCameraThenCrop()
+    }
+  })
+}
+
 function goAddWithCamera() {
   openCameraThenCrop()
 }
+
+onLoad(() => {
+  uni.setNavigationBarTitle({ title: '我的错题本' })
+})
 
 onShow(() => {
   if (getResultPath()) {

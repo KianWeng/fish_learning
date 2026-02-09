@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="toolbar">
-      <button class="btn primary" @click="goAdd">添加科目</button>
+      <button class="btn primary" @click="onAddTap">添加</button>
     </view>
     <view class="list" v-if="list.length">
       <view class="item" v-for="s in list" :key="s.id">
@@ -20,7 +20,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { listSubjects, deleteSubject } from '@/api/subjects.js'
+import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 
 const list = ref([])
 const loading = ref(true)
@@ -34,6 +36,28 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+/** 添加：新建错题本(科目) 或 拍照添加题目 */
+function onAddTap() {
+  uni.showActionSheet({
+    itemList: ['新建错题本', '拍照添加题目'],
+    success: (res) => {
+      if (res.tapIndex === 0) goAdd()
+      else if (res.tapIndex === 1) openCameraThenCrop()
+    }
+  })
+}
+
+function openCameraThenCrop() {
+  uni.chooseImage({
+    count: 1,
+    sourceType: ['camera'],
+    success: (res) => {
+      setSourcePath(res.tempFilePaths[0])
+      uni.navigateTo({ url: '/pages/common/image-crop' })
+    }
+  })
 }
 
 function goAdd() {
@@ -60,7 +84,17 @@ async function onDelete(s) {
   }
 }
 
+onLoad(() => {
+  uni.setNavigationBarTitle({ title: '科目管理' })
+})
+
 onMounted(load)
+
+onShow(() => {
+  if (getResultPath()) {
+    uni.navigateTo({ url: '/pages/questions/add' })
+  }
+})
 </script>
 
 <style scoped>
