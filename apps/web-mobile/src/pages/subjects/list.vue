@@ -97,17 +97,20 @@ onShow(() => {
 </script>
 
 <style scoped>
-.page { padding: 24rpx 24rpx 140rpx; min-height: 100vh; }
+.page { padding: 32rpx 32rpx 140rpx; min-height: 100vh; background: var(--bg-page); }
 .list { display: flex; flex-direction: column; gap: 16rpx; }
 .item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 28rpx; background: #fff; border-radius: 12rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  padding: 28rpx;
+  background: var(--bg-card);
+  border-radius: 24rpx;
+  box-shadow: var(--shadow-card);
 }
-.name { font-size: 30rpx; font-weight: 500; }
+.name { font-size: 30rpx; font-weight: 500; color: var(--text); }
 .actions { display: flex; gap: 24rpx; }
-.link { font-size: 26rpx; color: #07c160; }
+.link { font-size: 26rpx; color: var(--primary); }
 .link.danger { color: #ee0a24; }
-.empty { padding: 60rpx; text-align: center; color: #999; font-size: 28rpx; }
+.empty { padding: 60rpx; text-align: center; color: var(--text-hint); font-size: 28rpx; }
 
 .float-btn {
   position: fixed;
@@ -115,14 +118,14 @@ onShow(() => {
   bottom: 60rpx;
   width: 96rpx;
   height: 96rpx;
-  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #3a7bc8 100%);
   color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 48rpx;
-  box-shadow: 0 8rpx 24rpx rgba(7,193,96,0.35);
+  box-shadow: 0 8rpx 24rpx rgba(74,144,226,0.35);
   z-index: 10;
 }
 </style>

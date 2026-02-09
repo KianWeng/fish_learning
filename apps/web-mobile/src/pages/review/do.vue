@@ -78,19 +78,19 @@ async function submit(rating) {
 </script>
 
 <style scoped>
-.page { padding: 24rpx; background: #f5f6fa; min-height: 100vh; }
-.progress { font-size: 26rpx; color: #999; margin-bottom: 24rpx; }
-.card { background: #fff; border-radius: 24rpx; padding: 32rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06); }
-.content { font-size: 30rpx; color: #333; white-space: pre-wrap; margin-bottom: 24rpx; }
+.page { padding: 32rpx; background: var(--bg-page); min-height: 100vh; }
+.progress { font-size: 26rpx; color: var(--text-hint); margin-bottom: 24rpx; }
+.card { background: var(--bg-card); border-radius: 24rpx; padding: 32rpx; box-shadow: var(--shadow-card); }
+.content { font-size: 30rpx; color: var(--text); white-space: pre-wrap; margin-bottom: 24rpx; }
 .actions { margin-top: 24rpx; }
-.btn { margin-top: 16rpx; padding: 24rpx; border-radius: 16rpx; font-size: 28rpx; }
+.btn { margin-top: 16rpx; padding: 24rpx; border-radius: 24rpx; font-size: 28rpx; }
 .btn.forget { background: #ffebe9; color: #ee0a24; border: none; }
-.btn.vague { background: #fff7e6; color: #fa8c16; border: none; }
-.btn.remember { background: #e6f7ff; color: #07c160; border: none; }
+.btn.vague { background: #fff7e6; color: var(--warn); border: none; }
+.btn.remember { background: var(--primary-bg); color: var(--success); border: none; }
 .analysis, .answer, .rating { margin-top: 24rpx; }
-.label { display: block; font-size: 26rpx; color: #999; margin-bottom: 8rpx; }
-.text { font-size: 28rpx; color: #333; white-space: pre-wrap; }
+.label { display: block; font-size: 26rpx; color: var(--text-hint); margin-bottom: 8rpx; }
+.text { font-size: 28rpx; color: var(--text); white-space: pre-wrap; }
 .btns { display: flex; gap: 16rpx; margin-top: 12rpx; flex-wrap: wrap; }
 .btns .btn { margin-top: 0; flex: 1; min-width: 120rpx; }
-.empty { padding: 80rpx; text-align: center; color: #999; font-size: 28rpx; }
+.empty { padding: 80rpx; text-align: center; color: var(--text-hint); font-size: 28rpx; }
 </style>

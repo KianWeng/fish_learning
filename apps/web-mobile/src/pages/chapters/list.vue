@@ -132,51 +132,34 @@ onShow(() => {
 </script>
 
 <style scoped>
-.page { padding: 24rpx 24rpx 140rpx; min-height: 100vh; background: #f5f6fa; }
+.page { padding: 32rpx 32rpx 140rpx; min-height: 100vh; background: var(--bg-page); }
 .list-wrap {
-  background: #fff;
-  border-radius: 16rpx;
+  background: var(--bg-card);
+  border-radius: 24rpx;
   padding: 24rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
 }
 .list { display: flex; flex-direction: column; gap: 12rpx; }
 .item {
   display: flex; align-items: center; justify-content: space-between;
   padding: 28rpx 24rpx;
-  background: #f8f9fb;
-  border-radius: 12rpx;
+  background: var(--bg-page);
+  border-radius: 16rpx;
 }
-.name { font-size: 30rpx; font-weight: 500; color: #333; flex: 1; }
-.more-btn {
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6rpx;
-  flex-shrink: 0;
-}
-.dot {
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
-  background: #999;
-}
-.empty { padding: 60rpx; text-align: center; color: #999; font-size: 28rpx; }
+.name { font-size: 30rpx; font-weight: 500; color: var(--text); flex: 1; }
+.more-btn { width: 56rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; gap: 6rpx; flex-shrink: 0; }
+.dot { width: 8rpx; height: 8rpx; border-radius: 50%; background: var(--text-hint); }
+.empty { padding: 60rpx; text-align: center; color: var(--text-hint); font-size: 28rpx; }
 .float-btn {
   position: fixed;
-  right: 32rpx;
-  bottom: 120rpx;
-  width: 96rpx;
-  height: 96rpx;
-  background: linear-gradient(135deg, #1989fa 0%, #0d6ef5 100%);
+  right: 32rpx; bottom: 120rpx;
+  width: 96rpx; height: 96rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, #3a7bc8 100%);
   color: #fff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   font-size: 48rpx;
-  box-shadow: 0 8rpx 24rpx rgba(25,137,250,0.35);
+  box-shadow: 0 8rpx 24rpx rgba(74,144,226,0.35);
   z-index: 10;
 }
 </style>

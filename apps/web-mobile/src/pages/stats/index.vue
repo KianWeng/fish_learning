@@ -64,7 +64,7 @@ const predictCount = ref(0)
 
 const radarStyle = computed(() => {
   const per = radarData.value.map((v, i) => (i * 20 + 50) + '%')
-  return { width: '80%', height: '80%', margin: '10%', background: 'linear-gradient(135deg, rgba(25,137,250,0.35) 0%, rgba(25,137,250,0.15) 100%)', borderRadius: '50%' }
+  return { width: '80%', height: '80%', margin: '10%', background: 'linear-gradient(135deg, rgba(74,144,226,0.35) 0%, rgba(74,144,226,0.15) 100%)', borderRadius: '50%' }
 })
 
 onMounted(async () => {
@@ -99,29 +99,29 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page { padding: 24rpx; background: #f5f6fa; min-height: 100vh; }
-.card { background: #fff; border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06); }
+.page { padding: 32rpx; background: var(--bg-page); min-height: 100vh; }
+.card { background: var(--bg-card); border-radius: 24rpx; padding: 32rpx; margin-bottom: 32rpx; box-shadow: var(--shadow-card); }
 .card-head { display: flex; align-items: center; gap: 12rpx; }
-.card-icon { font-size: 36rpx; }
-.card-title { font-size: 32rpx; font-weight: 600; color: #333; }
-.card-desc { display: block; font-size: 26rpx; color: #666; margin-top: 12rpx; }
+.card-icon { font-size: 36rpx; color: var(--primary); }
+.card-title { font-size: 32rpx; font-weight: 600; color: var(--text); }
+.card-desc { display: block; font-size: 26rpx; color: var(--text-secondary); margin-top: 12rpx; }
 .activity-grid { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 24rpx; }
-.grid-cell { width: 32rpx; height: 32rpx; background: #f0f0f0; border-radius: 6rpx; }
-.grid-cell.active { background: #7eb8da; }
-.legend { display: flex; align-items: center; gap: 16rpx; margin-top: 20rpx; font-size: 24rpx; color: #999; }
+.grid-cell { width: 32rpx; height: 32rpx; background: var(--bg-page); border-radius: 6rpx; }
+.grid-cell.active { background: var(--primary-light); }
+.legend { display: flex; align-items: center; gap: 16rpx; margin-top: 20rpx; font-size: 24rpx; color: var(--text-hint); }
 .legend-cells { display: flex; gap: 8rpx; }
 .legend-cell { width: 24rpx; height: 24rpx; border-radius: 4rpx; }
-.legend-cell.l0 { background: #f0f0f0; }
-.legend-cell.l1 { background: #b3d9f0; }
-.legend-cell.l2 { background: #7eb8da; }
-.legend-cell.l3 { background: #1989fa; }
+.legend-cell.l0 { background: var(--bg-page); }
+.legend-cell.l1 { background: var(--primary-bg); }
+.legend-cell.l2 { background: var(--primary-light); }
+.legend-cell.l3 { background: var(--primary); }
 .radar-wrap { position: relative; height: 280rpx; margin: 24rpx 0; }
-.radar-bg { width: 240rpx; height: 240rpx; margin: 0 auto; border-radius: 50%; background: #f0f8ff; display: flex; align-items: center; justify-content: center; }
+.radar-bg { width: 240rpx; height: 240rpx; margin: 0 auto; border-radius: 50%; background: var(--primary-bg); display: flex; align-items: center; justify-content: center; }
 .radar-fill { border-radius: 50%; }
-.radar-labels { display: flex; justify-content: space-between; margin-top: 16rpx; padding: 0 24rpx; font-size: 24rpx; color: #666; }
+.radar-labels { display: flex; justify-content: space-between; margin-top: 16rpx; padding: 0 24rpx; font-size: 24rpx; color: var(--text-secondary); }
 .tip { display: flex; align-items: center; gap: 12rpx; padding: 20rpx; background: #fffbe6; border-radius: 12rpx; margin-top: 16rpx; }
-.tip-icon { font-size: 32rpx; }
-.tip-text { font-size: 26rpx; color: #666; }
-.predict-value { font-size: 72rpx; font-weight: 600; color: #1989fa; text-align: center; margin-top: 24rpx; }
-.predict-unit { display: block; text-align: center; font-size: 28rpx; color: #999; margin-top: 8rpx; }
+.tip-icon { font-size: 32rpx; color: var(--warn); }
+.tip-text { font-size: 26rpx; color: var(--text-secondary); }
+.predict-value { font-size: 72rpx; font-weight: 600; color: var(--primary); text-align: center; margin-top: 24rpx; }
+.predict-unit { display: block; text-align: center; font-size: 28rpx; color: var(--text-hint); margin-top: 8rpx; }
 </style>

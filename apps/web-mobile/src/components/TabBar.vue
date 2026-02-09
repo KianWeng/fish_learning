@@ -1,10 +1,10 @@
 <template>
   <view class="tabbar">
-    <view class="item" @click="go('/pages/index/index')">
+    <view class="item" :class="{ active: current === 'index' }" @click="go('/pages/index/index')">
       <text class="icon">🏠</text>
       <text class="label" :class="{ active: current === 'index' }">首页</text>
     </view>
-    <view class="item" @click="go('/pages/questions/list')">
+    <view class="item" :class="{ active: current === 'questions' }" @click="go('/pages/questions/list')">
       <text class="icon">📚</text>
       <text class="label" :class="{ active: current === 'questions' }">错题本</text>
     </view>
@@ -14,11 +14,11 @@
       </view>
       <text class="label">添加</text>
     </view>
-    <view class="item" @click="go('/pages/review/index')">
+    <view class="item" :class="{ active: current === 'review' }" @click="go('/pages/review/index')">
       <text class="icon">🔄</text>
       <text class="label" :class="{ active: current === 'review' }">复习</text>
     </view>
-    <view class="item" @click="go('/pages/my/index')">
+    <view class="item" :class="{ active: current === 'my' }" @click="go('/pages/my/index')">
       <text class="icon">👤</text>
       <text class="label" :class="{ active: current === 'my' }">我的</text>
     </view>
@@ -85,6 +85,10 @@ function onAddTap() {
 
 <style scoped>
 .tabbar {
+  --tab-primary: #4A90E2;
+  --tab-primary-light: #66B2FF;
+}
+.tabbar {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -94,22 +98,25 @@ function onAddTap() {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  box-shadow: 0 -2rpx 16rpx rgba(0,0,0,0.06);
+  box-shadow: 0 -2rpx 16rpx rgba(0,0,0,0.05);
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 100;
 }
 .item { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
-.icon { font-size: 40rpx; }
+.icon { font-size: 40rpx; color: #999; }
+.item:not(.center) .icon { transition: color 0.2s; }
+.item:not(.center).active .icon { color: var(--tab-primary); }
 .item.center .label { color: #999; }
-.label { font-size: 22rpx; color: #999; margin-top: 4rpx; }
-.label.active { color: #1989fa; font-weight: 500; }
+.label { font-size: 22rpx; color: #999; margin-top: 4rpx; transition: color 0.2s, font-weight 0.2s; }
+.label.active { color: var(--tab-primary); font-weight: 600; }
 .item.center .camera-btn {
   width: 96rpx; height: 96rpx;
-  background: linear-gradient(135deg, #1989fa 0%, #0d6ef5 100%);
+  background: linear-gradient(135deg, var(--tab-primary) 0%, #3a7bc8 100%);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   margin-top: -40rpx;
-  box-shadow: 0 8rpx 24rpx rgba(25,137,250,0.4);
+  box-shadow: 0 8rpx 24rpx rgba(74,144,226,0.35);
 }
+.item.center .camera-btn:active { background: linear-gradient(135deg, var(--tab-primary-light) 0%, var(--tab-primary) 100%); }
 .item.center .camera-icon { font-size: 44rpx; }
 </style>

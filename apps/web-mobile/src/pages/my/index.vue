@@ -125,22 +125,44 @@ function goImportPdf() {
 </script>
 
 <style scoped>
-.page { padding: 24rpx 24rpx 140rpx; background: #f0f1f5; min-height: 100vh; }
-.profile { background: #fff; border-radius: 24rpx; padding: 48rpx; text-align: center; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06); margin-bottom: 24rpx; }
-.avatar-wrap { width: 160rpx; height: 160rpx; margin: 0 auto 24rpx; border-radius: 50%; background: #e8f4ff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.page { padding: 32rpx 32rpx 140rpx; background: var(--bg-page); min-height: 100vh; }
+.profile {
+  background: var(--bg-card);
+  border-radius: 24rpx;
+  padding: 48rpx;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 32rpx;
+}
+.avatar-wrap {
+  width: 160rpx; height: 160rpx;
+  margin: 0 auto 24rpx;
+  border-radius: 50%;
+  background: var(--primary-bg);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
 .avatar-img { width: 100%; height: 100%; }
 .avatar-placeholder { font-size: 80rpx; }
-.nickname { font-size: 36rpx; font-weight: 600; color: #333; display: block; }
-.desc { font-size: 26rpx; color: #999; margin-top: 12rpx; display: block; }
+.nickname { font-size: 36rpx; font-weight: 600; color: var(--text); display: block; }
+.desc { font-size: 26rpx; color: var(--text-hint); margin-top: 12rpx; display: block; }
 .auth-row { margin-top: 24rpx; }
-.btn-auth { width: 240rpx; height: 64rpx; line-height: 64rpx; font-size: 28rpx; border-radius: 32rpx; background: #07c160; color: #fff; border: none; }
+.btn-auth {
+  width: 240rpx; height: 64rpx; line-height: 64rpx; font-size: 28rpx;
+  border-radius: 32rpx; background: var(--primary); color: #fff; border: none;
+}
 .btn-auth::after { border: none; }
-.btn-auth.secondary { background: transparent; color: #999; border: 1rpx solid #ddd; }
-.menu { background: #fff; border-radius: 24rpx; overflow: hidden; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06); }
+.btn-auth.secondary { background: transparent; color: var(--text-hint); border: 1rpx solid #ddd; }
+.menu {
+  background: var(--bg-card);
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
 .menu-item { display: flex; align-items: center; padding: 32rpx 24rpx; border-bottom: 1rpx solid #f0f0f0; }
 .menu-item:last-child { border-bottom: none; }
-.menu-icon { font-size: 40rpx; margin-right: 24rpx; }
-.menu-text { flex: 1; font-size: 30rpx; color: #333; }
-.menu-arrow { font-size: 36rpx; color: #999; }
+.menu-icon { font-size: 40rpx; margin-right: 24rpx; color: var(--primary); }
+.menu-text { flex: 1; font-size: 30rpx; color: var(--text); }
+.menu-arrow { font-size: 36rpx; color: var(--text-hint); }
 .tabbar-placeholder { height: 120rpx; }
 </style>

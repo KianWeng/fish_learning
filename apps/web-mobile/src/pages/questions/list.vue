@@ -18,9 +18,8 @@
           :key="s.id"
           @click="goChapters(s)"
         >
-          <view class="card-cover" :class="coverUrl(s) ? 'has-img' : ''">
-            <image v-if="coverUrl(s)" :src="coverUrl(s)" mode="aspectFill" class="cover-img" />
-            <view v-else class="cover-placeholder"></view>
+          <view class="card-cover has-img">
+            <image :src="getSubjectCoverUrl(s)" mode="aspectFill" class="cover-img" />
             <view class="card-menu-btn" @click.stop="openCardMenu(s)">
               <view class="menu-dot"></view>
               <view class="menu-dot"></view>
@@ -54,6 +53,7 @@ import { ref, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
+import { getSubjectCoverUrl } from '@/utils/cover.js'
 import { listSubjects, updateSubject, deleteSubject, exportSubjectPdf } from '@/api/subjects.js'
 import { listQuestions } from '@/api/questions.js'
 import { uploadImage } from '@/api/questions.js'
@@ -62,12 +62,6 @@ import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 const list = ref([])
 const loading = ref(true)
 const subjectCounts = ref({})
-
-function coverUrl(s) {
-  if (!s?.cover_url) return ''
-  const url = s.cover_url
-  return url.startsWith('http') ? url : API_BASE_URL + url
-}
 
 async function load() {
   loading.value = true
@@ -248,25 +242,15 @@ onMounted(() => {
 
 <style scoped>
 .page {
-  padding: 24rpx 24rpx 140rpx;
-  background: linear-gradient(180deg, #f0f4fa 0%, #e8eef5 100%);
+  padding: 32rpx 32rpx 160rpx;
+  background: var(--bg-page);
   min-height: 100vh;
 }
-.header {
-  position: relative;
-  padding: 20rpx 0 28rpx;
-}
-.title { font-size: 40rpx; font-weight: 600; color: #1a1a2e; }
-.sub { display: block; font-size: 26rpx; color: #6b7280; margin-top: 6rpx; }
-.header-right {
-  position: absolute;
-  right: 0;
-  top: 20rpx;
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-.link { font-size: 26rpx; color: #1989fa; }
+.header { position: relative; padding: 20rpx 0 28rpx; }
+.title { font-size: 40rpx; font-weight: 600; color: var(--text); }
+.sub { display: block; font-size: 26rpx; color: var(--text-secondary); margin-top: 6rpx; }
+.header-right { position: absolute; right: 0; top: 20rpx; display: flex; align-items: center; gap: 20rpx; }
+.link { font-size: 26rpx; color: var(--primary); }
 
 .list-wrap {
   max-width: 680rpx;
@@ -278,98 +262,50 @@ onMounted(() => {
   gap: 24rpx;
 }
 .book-card {
-  background: #fff;
-  border-radius: 20rpx;
+  background: var(--bg-card);
+  border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
 }
-.card-cover {
-  height: 180rpx;
-  position: relative;
-  overflow: hidden;
-}
-.cover-img {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.cover-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(145deg, #a8d8ea 0%, #7eb8da 50%, #5a9fc9 100%);
-}
+.card-cover { height: 180rpx; position: relative; overflow: hidden; }
+.cover-img { width: 100%; height: 100%; display: block; }
 .card-menu-btn {
-  position: absolute;
-  top: 8rpx;
-  right: 8rpx;
-  width: 40rpx;
-  height: 40rpx;
+  position: absolute; top: 8rpx; right: 8rpx;
+  width: 40rpx; height: 40rpx;
   background: rgba(0,0,0,0.4);
-  border-radius: 6rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4rpx;
+  border-radius: 8rpx;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx;
 }
-.menu-dot {
-  width: 5rpx;
-  height: 5rpx;
-  border-radius: 50%;
-  background: #fff;
-}
+.menu-dot { width: 5rpx; height: 5rpx; border-radius: 50%; background: #fff; }
 .card-footer { padding: 20rpx; }
 .book-name {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #333;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 28rpx; font-weight: 500; color: var(--text);
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.progress-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 12rpx;
-}
-.progress-bar {
-  flex: 1;
-  height: 8rpx;
-  background: #eee;
-  border-radius: 4rpx;
-  overflow: hidden;
-}
+.progress-wrap { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; }
+.progress-bar { flex: 1; height: 8rpx; background: #eee; border-radius: 4rpx; overflow: hidden; }
 .progress-inner {
   height: 100%;
-  background: linear-gradient(90deg, #1989fa, #0d6ef5);
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
   border-radius: 4rpx;
   transition: width 0.3s;
 }
-.progress-text { font-size: 22rpx; color: #999; }
+.progress-text { font-size: 22rpx; color: var(--text-hint); }
 
-.empty {
-  text-align: center;
-  padding: 80rpx 32rpx;
-}
-.empty-text { display: block; color: #6b7280; font-size: 30rpx; }
-.empty-hint { display: block; margin-top: 16rpx; color: #9ca3af; font-size: 26rpx; }
+.empty { text-align: center; padding: 80rpx 32rpx; }
+.empty-text { display: block; color: var(--text-secondary); font-size: 30rpx; }
+.empty-hint { display: block; margin-top: 16rpx; color: var(--text-hint); font-size: 26rpx; }
 
 .float-btn {
   position: fixed;
-  right: 32rpx;
-  bottom: 220rpx;
-  width: 96rpx;
-  height: 96rpx;
-  background: linear-gradient(135deg, #1989fa 0%, #0d6ef5 100%);
+  right: 32rpx; bottom: 220rpx;
+  width: 96rpx; height: 96rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, #3a7bc8 100%);
   color: #fff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   font-size: 48rpx;
-  box-shadow: 0 8rpx 24rpx rgba(25,137,250,0.35);
+  box-shadow: 0 8rpx 24rpx rgba(74,144,226,0.35);
   z-index: 10;
 }
 .tabbar-placeholder { height: 120rpx; }

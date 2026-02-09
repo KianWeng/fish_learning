@@ -176,29 +176,28 @@ onShow(() => {
 </script>
 
 <style scoped>
-.page { padding: 24rpx 24rpx 140rpx; background: #f5f6fa; min-height: 100vh; }
+.page { padding: 32rpx 32rpx 140rpx; background: var(--bg-page); min-height: 100vh; }
 .header { padding: 20rpx 0 24rpx; }
-.title { font-size: 36rpx; font-weight: 600; color: #1a1a2e; display: block; }
-.sub { font-size: 26rpx; color: #6b7280; margin-top: 8rpx; display: block; }
+.title { font-size: 36rpx; font-weight: 600; color: var(--text); display: block; }
+.sub { font-size: 26rpx; color: var(--text-secondary); margin-top: 8rpx; display: block; }
 .list { display: flex; flex-direction: column; gap: 16rpx; }
 .item-wrap {
   position: relative;
-  border-radius: 16rpx;
+  border-radius: 24rpx;
   overflow: hidden;
-  background: #fff;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
 }
 .item-slide {
   position: relative;
   z-index: 1;
   width: 100%;
   padding: 28rpx 24rpx;
-  background: #fff;
+  background: var(--bg-card);
   transition: transform 0.2s ease;
   min-height: 100rpx;
   box-sizing: border-box;
 }
-/* 右侧固定一块白色遮罩盖住删除区，未滑动时不透红；左滑时随整块左移露出删除 */
 .item-slide::after {
   content: '';
   position: absolute;
@@ -206,12 +205,12 @@ onShow(() => {
   top: 0;
   bottom: 0;
   width: 120rpx;
-  background: #fff;
+  background: var(--bg-card);
   z-index: 0;
 }
 .item-main { position: relative; z-index: 1; min-width: 0; }
-.content { font-size: 28rpx; color: #333; display: block; line-height: 1.4; }
-.time { font-size: 24rpx; color: #999; margin-top: 12rpx; display: block; }
+.content { font-size: 28rpx; color: var(--text); display: block; line-height: 1.4; }
+.time { font-size: 24rpx; color: var(--text-hint); margin-top: 12rpx; display: block; }
 .item-delete {
   position: absolute;
   right: 0;
@@ -230,29 +229,28 @@ onShow(() => {
   -webkit-tap-highlight-color: transparent;
 }
 .item-delete::after { border: none; }
-/* 删除按钮稍向内缩并做圆角，避免贴住最外圆角透红 */
 .item-delete {
   right: 2rpx;
   width: 118rpx;
   border-radius: 0 14rpx 14rpx 0;
 }
 .empty { padding: 80rpx 32rpx; text-align: center; }
-.empty-text { display: block; color: #6b7280; font-size: 30rpx; }
-.empty-hint { display: block; margin-top: 16rpx; color: #9ca3af; font-size: 26rpx; }
+.empty-text { display: block; color: var(--text-secondary); font-size: 30rpx; }
+.empty-hint { display: block; margin-top: 16rpx; color: var(--text-hint); font-size: 26rpx; }
 .float-btn {
   position: fixed;
   right: 32rpx;
   bottom: 120rpx;
   width: 96rpx;
   height: 96rpx;
-  background: linear-gradient(135deg, #1989fa 0%, #0d6ef5 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #3a7bc8 100%);
   color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 48rpx;
-  box-shadow: 0 8rpx 24rpx rgba(25,137,250,0.35);
+  box-shadow: 0 8rpx 24rpx rgba(74,144,226,0.35);
   z-index: 10;
 }
 </style>

@@ -2,7 +2,9 @@
   <view class="page">
     <!-- 复习题目卡片 -->
     <view class="card question-card" v-if="todayQuestion">
-      <view class="tag">题目 #{{ todayQuestion.id }}</view>
+      <view class="card-head">
+        <view class="tag">题目 #{{ todayQuestion.id }}</view>
+      </view>
       <view class="q-body">
         <view class="q-placeholder" v-if="!showAnswer">
           <text class="q-title">复习题目</text>
@@ -19,7 +21,7 @@
             <text class="text">{{ todayQuestion.answer }}</text>
           </view>
         </view>
-        <button class="btn-show" @click="showAnswer = !showAnswer">
+        <button class="btn-show" :class="{ active: showAnswer }" @click="showAnswer = !showAnswer">
           {{ showAnswer ? '点击隐藏' : '点击显示' }}
         </button>
       </view>
@@ -33,13 +35,25 @@
     <view class="section">
       <text class="section-title">快捷访问</text>
       <view class="quick-grid">
-        <view class="quick-card" v-for="s in subjects.slice(0, 3)" :key="s.id" @click="goQuestions(s)">
-          <view class="quick-icon">📖</view>
-          <text class="quick-name">{{ s.name }}</text>
-          <text class="quick-desc">查看错题</text>
+        <view
+          class="quick-card quick-card-subject"
+          v-for="s in subjects.slice(0, 3)"
+          :key="s.id"
+          @click="goQuestions(s)"
+        >
+          <view class="quick-cover">
+            <image class="quick-cover-img" :src="getSubjectCoverUrl(s)" mode="aspectFill" />
+          </view>
+          <view class="quick-cover-overlay"></view>
+          <view class="quick-content">
+            <text class="quick-name">{{ s.name }}</text>
+            <text class="quick-desc">查看错题</text>
+          </view>
         </view>
         <view class="quick-card add-card" @click="onAddTap">
-          <view class="quick-icon add-icon">+</view>
+          <view class="quick-icon-wrap add-icon-wrap">
+            <text class="add-plus">+</text>
+          </view>
           <text class="quick-name">新建</text>
         </view>
       </view>
@@ -49,13 +63,17 @@
     <view class="section">
       <view class="stats-row">
         <view class="stat-card">
-          <text class="stat-icon">✓</text>
+          <view class="stat-icon-wrap">
+            <text class="stat-icon">✓</text>
+          </view>
           <text class="stat-label">已解决</text>
           <text class="stat-value">{{ todayCount }}</text>
           <text class="stat-desc">今日待复习</text>
         </view>
         <view class="stat-card">
-          <text class="stat-icon clock">⏱</text>
+          <view class="stat-icon-wrap clock">
+            <text class="stat-icon">⏱</text>
+          </view>
           <text class="stat-label">专注</text>
           <text class="stat-value">{{ studyMinutes }}m</text>
           <text class="stat-desc">学习时长</text>
@@ -73,6 +91,7 @@ import { ref, onMounted } from 'vue'
 import TabBar from '@/components/TabBar.vue'
 import { getTodayReviews } from '@/api/reviews.js'
 import { listSubjects } from '@/api/subjects.js'
+import { getSubjectCoverUrl } from '@/utils/cover.js'
 
 const todayQuestion = ref(null)
 const showAnswer = ref(false)
@@ -118,36 +137,238 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page { padding: 24rpx 24rpx 140rpx; background: #f5f6fa; min-height: 100vh; }
-.card { background: #fff; border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06); }
-.question-card .tag { display: inline-block; background: #1989fa; color: #fff; font-size: 24rpx; padding: 8rpx 20rpx; border-radius: 20rpx; margin-bottom: 20rpx; }
-.q-body { min-height: 160rpx; }
-.q-placeholder { text-align: center; padding: 24rpx 0; }
-.q-title { display: block; font-size: 34rpx; font-weight: 600; color: #333; }
-.q-hint { display: block; font-size: 26rpx; color: #999; margin-top: 12rpx; }
-.content-text { font-size: 28rpx; color: #333; white-space: pre-wrap; display: block; margin-bottom: 20rpx; }
+/* 设计令牌：柔和主色 + 功能区分色 */
+.page {
+  --primary: #4A90E2;
+  --primary-light: #66B2FF;
+  --primary-bg: #E3F2FD;
+  --success: #A5D6A7;
+  --warn: #FFCC80;
+  --text: #333;
+  --text-secondary: #666;
+  --text-hint: #999;
+  --bg-page: #F5F5F5;
+  --bg-card: #fff;
+  --shadow: 0 2rpx 16rpx rgba(0,0,0,0.05);
+}
+
+.page {
+  padding: 32rpx 32rpx 160rpx;
+  background: var(--bg-page);
+  min-height: 100vh;
+}
+
+.card {
+  background: var(--bg-card);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 32rpx;
+  box-shadow: var(--shadow);
+}
+
+.question-card {
+  position: relative;
+}
+.card-head {
+  margin-bottom: 16rpx;
+}
+.question-card .tag {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  font-size: 22rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 12rpx;
+}
+.q-body { min-height: 140rpx; }
+.q-placeholder { text-align: center; padding: 20rpx 0; }
+.q-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--primary);
+}
+.q-hint {
+  display: block;
+  font-size: 24rpx;
+  color: var(--text-hint);
+  margin-top: 12rpx;
+}
+.content-text {
+  font-size: 28rpx;
+  color: var(--text);
+  white-space: pre-wrap;
+  display: block;
+  margin-bottom: 20rpx;
+}
 .analysis, .answer { margin-top: 20rpx; }
-.label { display: block; font-size: 24rpx; color: #999; margin-bottom: 8rpx; }
-.text { font-size: 26rpx; color: #555; white-space: pre-wrap; }
-.btn-show { width: 100%; margin-top: 24rpx; height: 80rpx; line-height: 80rpx; background: #1989fa; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; }
+.label { display: block; font-size: 24rpx; color: var(--text-hint); margin-bottom: 8rpx; }
+.text { font-size: 26rpx; color: var(--text-secondary); white-space: pre-wrap; }
+
+.btn-show {
+  width: 100%;
+  margin-top: 24rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 24rpx;
+  font-size: 28rpx;
+  transition: background 0.2s;
+}
+.btn-show:active { background: var(--primary-light); }
+
 .empty-q { text-align: center; }
-.empty-text { color: #999; font-size: 28rpx; }
-.link { display: block; margin-top: 16rpx; color: #1989fa; font-size: 28rpx; }
-.section { margin-bottom: 24rpx; }
-.section-title { font-size: 30rpx; font-weight: 600; color: #333; margin-bottom: 20rpx; display: block; }
-.quick-grid { display: flex; flex-wrap: wrap; gap: 20rpx; }
-.quick-card { width: calc(50% - 10rpx); background: #e8f4ff; border-radius: 20rpx; padding: 28rpx; box-sizing: border-box; }
-.quick-card.add-card { background: #fff; border: 2rpx dashed #ddd; }
-.quick-icon { font-size: 48rpx; margin-bottom: 12rpx; }
-.add-icon { font-size: 56rpx; color: #999; }
-.quick-name { display: block; font-size: 28rpx; font-weight: 500; color: #333; }
-.quick-desc { font-size: 24rpx; color: #1989fa; margin-top: 4rpx; }
-.stats-row { display: flex; gap: 20rpx; }
-.stat-card { flex: 1; background: #fff; border-radius: 20rpx; padding: 28rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06); }
-.stat-icon { font-size: 36rpx; color: #07c160; }
-.stat-icon.clock { color: #1989fa; }
-.stat-label { display: block; font-size: 26rpx; color: #666; margin-top: 8rpx; }
-.stat-value { display: block; font-size: 44rpx; font-weight: 600; color: #333; margin-top: 8rpx; }
-.stat-desc { font-size: 24rpx; color: #999; margin-top: 4rpx; }
+.empty-text { color: var(--text-hint); font-size: 28rpx; }
+.link { display: block; margin-top: 16rpx; color: var(--primary); font-size: 28rpx; }
+
+.section { margin-bottom: 32rpx; }
+.section-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 24rpx;
+  display: block;
+}
+
+.quick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+.quick-card {
+  width: calc(33.333% - 14rpx);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 180rpx;
+}
+.quick-card-subject {
+  background: none !important;
+  justify-content: flex-end;
+}
+.quick-card-subject .quick-cover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+.quick-card-subject .quick-cover-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.quick-card-subject .quick-cover-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%);
+}
+.quick-card-subject .quick-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+.quick-card-subject .quick-icon { color: #fff; }
+.quick-card-subject .quick-name { color: #fff; text-shadow: 0 1rpx 4rpx rgba(0,0,0,0.4); }
+.quick-card-subject .quick-desc { color: rgba(255,255,255,0.9); }
+.quick-card.add-card {
+  background: transparent;
+  border: 2rpx dashed var(--primary);
+}
+.quick-icon-wrap {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+}
+.quick-icon {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: var(--primary);
+}
+.add-icon-wrap {
+  border: 2rpx solid var(--primary);
+  border-radius: 50%;
+}
+.add-plus {
+  font-size: 44rpx;
+  color: var(--primary);
+  font-weight: 300;
+  line-height: 1;
+}
+.quick-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 500;
+  color: var(--text);
+}
+.quick-desc {
+  font-size: 22rpx;
+  color: var(--text-secondary);
+  margin-top: 4rpx;
+}
+
+.stats-row { display: flex; gap: 24rpx; }
+.stat-card {
+  flex: 1;
+  background: var(--bg-page);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: var(--shadow);
+}
+.stat-icon-wrap {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid var(--primary);
+  border-radius: 50%;
+  margin-bottom: 12rpx;
+}
+.stat-icon {
+  font-size: 28rpx;
+  color: var(--primary);
+  font-weight: 700;
+}
+.stat-icon-wrap.clock .stat-icon { color: var(--primary); }
+.stat-label {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--primary);
+}
+.stat-value {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 700;
+  color: var(--primary);
+  margin-top: 8rpx;
+}
+.stat-desc {
+  font-size: 22rpx;
+  color: var(--text-hint);
+  margin-top: 4rpx;
+}
+
 .tabbar-placeholder { height: 120rpx; }
 </style>

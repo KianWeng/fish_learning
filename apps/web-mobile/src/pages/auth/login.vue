@@ -114,22 +114,22 @@ async function onLogin() {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: linear-gradient(180deg, #e8f4ff 0%, #f5f6fa 40%); padding: 120rpx 48rpx 80rpx; box-sizing: border-box; }
-.card { background: #fff; border-radius: 32rpx; padding: 48rpx 48rpx 64rpx; box-shadow: 0 8rpx 40rpx rgba(0,0,0,0.08); }
-.title { font-size: 40rpx; font-weight: 600; color: #333; text-align: center; margin-bottom: 16rpx; }
-.desc { font-size: 28rpx; color: #999; text-align: center; margin-bottom: 48rpx; }
+.page { min-height: 100vh; background: linear-gradient(180deg, var(--primary-bg) 0%, var(--bg-page) 40%); padding: 120rpx 48rpx 80rpx; box-sizing: border-box; }
+.card { background: var(--bg-card); border-radius: 32rpx; padding: 48rpx 48rpx 64rpx; box-shadow: var(--shadow-card); }
+.title { font-size: 40rpx; font-weight: 600; color: var(--text); text-align: center; margin-bottom: 16rpx; }
+.desc { font-size: 28rpx; color: var(--text-hint); text-align: center; margin-bottom: 48rpx; }
 .form { margin-bottom: 48rpx; }
 .avatar-row { display: flex; align-items: center; margin-bottom: 32rpx; }
-.avatar-row .label { width: 120rpx; font-size: 30rpx; color: #333; }
-.avatar-btn { width: 160rpx; height: 160rpx; border-radius: 50%; overflow: hidden; padding: 0; margin: 0; background: #f0f0f0; border: 2rpx dashed #ccc; display: flex; align-items: center; justify-content: center; }
+.avatar-row .label { width: 120rpx; font-size: 30rpx; color: var(--text); }
+.avatar-btn { width: 160rpx; height: 160rpx; border-radius: 50%; overflow: hidden; padding: 0; margin: 0; background: var(--bg-page); border: 2rpx dashed var(--text-hint); display: flex; align-items: center; justify-content: center; }
 .avatar-btn::after { border: none; }
 .avatar-img { width: 100%; height: 100%; }
-.avatar-placeholder { font-size: 24rpx; color: #999; }
+.avatar-placeholder { font-size: 24rpx; color: var(--text-hint); }
 .nickname-row { display: flex; align-items: center; }
-.nickname-row .label { width: 120rpx; font-size: 30rpx; color: #333; }
-.nickname-input { flex: 1; height: 80rpx; padding: 0 24rpx; font-size: 30rpx; background: #f8f8f8; border-radius: 12rpx; }
-.placeholder { color: #bbb; }
-.btn-login { width: 100%; height: 96rpx; line-height: 96rpx; background: #07c160; color: #fff; font-size: 32rpx; border-radius: 48rpx; border: none; }
+.nickname-row .label { width: 120rpx; font-size: 30rpx; color: var(--text); }
+.nickname-input { flex: 1; height: 80rpx; padding: 0 24rpx; font-size: 30rpx; background: var(--bg-page); border-radius: 12rpx; }
+.placeholder { color: var(--text-hint); }
+.btn-login { width: 100%; height: 96rpx; line-height: 96rpx; background: var(--primary); color: #fff; font-size: 32rpx; border-radius: 48rpx; border: none; }
 .btn-login::after { border: none; }
-.tip { font-size: 24rpx; color: #999; text-align: center; margin-top: 32rpx; }
+.tip { font-size: 24rpx; color: var(--text-hint); text-align: center; margin-top: 32rpx; }
 </style>

@@ -113,13 +113,13 @@ loadSubjects().then(() => load())
 </script>
 
 <style scoped>
-.page { padding: 24rpx 24rpx 140rpx; background: #f5f6fa; min-height: 100vh; }
+.page { padding: 32rpx 32rpx 140rpx; background: var(--bg-page); min-height: 100vh; }
 .filter { display: flex; gap: 16rpx; margin-bottom: 24rpx; flex-wrap: wrap; }
-.filter-item { padding: 16rpx 24rpx; background: #fff; border-radius: 8rpx; font-size: 26rpx; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.06); }
+.filter-item { padding: 16rpx 24rpx; background: var(--bg-card); border-radius: 16rpx; font-size: 26rpx; color: var(--text); box-shadow: var(--shadow); }
 .list { display: flex; flex-direction: column; gap: 16rpx; }
-.item { padding: 28rpx; background: #fff; border-radius: 12rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06); }
-.content { font-size: 28rpx; color: #333; display: block; }
-.time { font-size: 24rpx; color: #999; margin-top: 12rpx; display: block; }
-.empty { padding: 60rpx; text-align: center; color: #999; font-size: 28rpx; }
+.item { padding: 28rpx; background: var(--bg-card); border-radius: 24rpx; box-shadow: var(--shadow-card); }
+.content { font-size: 28rpx; color: var(--text); display: block; }
+.time { font-size: 24rpx; color: var(--text-hint); margin-top: 12rpx; display: block; }
+.empty { padding: 60rpx; text-align: center; color: var(--text-hint); font-size: 28rpx; }
 .tabbar-placeholder { height: 120rpx; }
 </style>

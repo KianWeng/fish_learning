@@ -67,11 +67,11 @@ async function submit() {
 </script>
 
 <style scoped>
-.page { padding: 24rpx; }
-.form { background: #fff; border-radius: 12rpx; padding: 32rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06); }
+.page { background: var(--bg-page); min-height: 100vh; padding: 32rpx; }
+.form { background: var(--bg-card); border-radius: 24rpx; padding: 32rpx; box-shadow: var(--shadow-card); }
 .row { margin-bottom: 32rpx; }
-.label { display: block; font-size: 28rpx; color: #666; margin-bottom: 12rpx; }
-.input { padding: 24rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 30rpx; }
-.btn { margin-top: 24rpx; padding: 28rpx; border-radius: 12rpx; font-size: 30rpx; }
-.primary { background: #07c160; color: #fff; border: none; }
+.label { display: block; font-size: 28rpx; color: var(--text-secondary); margin-bottom: 12rpx; }
+.input { padding: 24rpx; border: 1rpx solid #eee; border-radius: 12rpx; font-size: 30rpx; color: var(--text); }
+.btn { margin-top: 24rpx; padding: 28rpx; border-radius: 24rpx; font-size: 30rpx; }
+.primary { background: var(--primary); color: #fff; border: none; }
 </style>

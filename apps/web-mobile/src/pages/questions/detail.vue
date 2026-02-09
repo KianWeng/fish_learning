@@ -221,18 +221,17 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page { padding: 24rpx; }
-.card { background: #fff; border-radius: 12rpx; padding: 28rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06); }
-.label { display: block; font-size: 26rpx; color: #999; margin-bottom: 12rpx; }
-.content { font-size: 30rpx; color: #333; white-space: pre-wrap; word-break: break-all; }
+.page { padding: 32rpx; background: var(--bg-page); min-height: 100vh; }
+.card { background: var(--bg-card); border-radius: 24rpx; padding: 28rpx; margin-bottom: 32rpx; box-shadow: var(--shadow-card); }
+.label { display: block; font-size: 26rpx; color: var(--text-hint); margin-bottom: 12rpx; }
+.content { font-size: 30rpx; color: var(--text); white-space: pre-wrap; word-break: break-all; }
 .img-card { position: relative; }
-.img { width: 100%; border-radius: 8rpx; }
+.img { width: 100%; border-radius: 12rpx; }
 .img-tap-hint { position: absolute; right: 28rpx; bottom: 16rpx; font-size: 22rpx; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.4); padding: 8rpx 16rpx; border-radius: 8rpx; }
-.meta { font-size: 24rpx; color: #999; }
+.meta { font-size: 24rpx; color: var(--text-hint); }
 .empty { text-align: center; padding: 60rpx; }
-.img-placeholder { padding: 48rpx; text-align: center; color: #999; font-size: 28rpx; background: #f5f5f5; border-radius: 8rpx; }
+.img-placeholder { padding: 48rpx; text-align: center; color: var(--text-hint); font-size: 28rpx; background: var(--bg-page); border-radius: 12rpx; }
 
-/* 图片预览弹窗：居中、内层按 scale 放大、可滚动查看全图 */
 .image-preview-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 999; display: flex; flex-direction: column; }
 .image-preview-wrap { flex: 1; width: 100%; min-height: 0; overflow: auto; padding: 40rpx; box-sizing: border-box; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; align-items: center; }
 .image-preview-inner { flex: 0 0 auto; }
@@ -240,17 +239,16 @@ onMounted(async () => {
 .image-preview-toolbar { position: absolute; bottom: 0; left: 0; right: 0; padding: 24rpx 32rpx  env(safe-area-inset-bottom); background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; gap: 24rpx; }
 .toolbar-btn { width: 72rpx; height: 72rpx; line-height: 72rpx; padding: 0; font-size: 36rpx; color: #fff; background: rgba(255,255,255,0.2); border-radius: 12rpx; }
 .toolbar-scale { font-size: 26rpx; color: #fff; min-width: 80rpx; text-align: center; }
-.toolbar-close { padding: 16rpx 32rpx; font-size: 28rpx; color: #fff; background: #07c160; border-radius: 12rpx; }
+.toolbar-close { padding: 16rpx 32rpx; font-size: 28rpx; color: #fff; background: var(--primary); border-radius: 12rpx; }
 
-/* 自我剖析 */
 .notes-card { }
-.notes-input { width: 100%; min-height: 160rpx; font-size: 28rpx; color: #333; padding: 16rpx; box-sizing: border-box; border: 1rpx solid #eee; border-radius: 8rpx; margin-top: 8rpx; }
+.notes-input { width: 100%; min-height: 160rpx; font-size: 28rpx; color: var(--text); padding: 16rpx; box-sizing: border-box; border: 1rpx solid #eee; border-radius: 12rpx; margin-top: 8rpx; }
 .notes-actions { margin-top: 20rpx; }
-.btn-save { background: #07c160; color: #fff; }
+.btn-save { background: var(--primary); color: #fff; }
 
 .debug-card { background: #fffbe6; }
-.debug-url { font-size: 24rpx; color: #666; word-break: break-all; display: block; margin-top: 8rpx; }
-.debug-hint { font-size: 22rpx; color: #999; display: block; margin-top: 12rpx; }
+.debug-url { font-size: 24rpx; color: var(--text-secondary); word-break: break-all; display: block; margin-top: 8rpx; }
+.debug-hint { font-size: 22rpx; color: var(--text-hint); display: block; margin-top: 12rpx; }
 .debug-toggle { padding: 16rpx; text-align: center; }
-.debug-toggle-text { font-size: 24rpx; color: #999; }
+.debug-toggle-text { font-size: 24rpx; color: var(--text-hint); }
 </style>
