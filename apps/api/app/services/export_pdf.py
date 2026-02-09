@@ -149,14 +149,14 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
     return buf.getvalue()
 
 
-def export_subject_to_pdf_file(subject_name: str, questions: list[dict], out_filename: str | None = None) -> str:
-    """
-    生成 PDF 并保存到 storage（SUBDIR_PDFS），返回访问路径 /files/pdfs/xxx.pdf。
-    """
+def export_subject_to_pdf_file(
+    subject_name: str, questions: list[dict], out_filename: str | None, storage_key: str
+) -> str:
+    """生成 PDF 并保存到 uploads/<storage_key>/pdfs/，返回 /files/pdfs/<storage_key>/xxx.pdf。storage_key 由 user_storage_key(openid) 得到。"""
     pdf_bytes = build_subject_pdf(subject_name, questions, None)
     safe_name = re.sub(r"[^\w\u4e00-\u9fff\-]", "_", (subject_name or "错题本")[:50])
     filename = (out_filename or f"{safe_name}.pdf").encode("utf-8", errors="ignore").decode("utf-8")
     if not filename.endswith(".pdf"):
         filename += ".pdf"
-    path, _ = save_upload_file(pdf_bytes, filename, subdir=SUBDIR_PDFS)
+    path, _ = save_upload_file(pdf_bytes, filename, SUBDIR_PDFS, storage_key)
     return path

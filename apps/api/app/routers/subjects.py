@@ -4,10 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
 from app.deps import get_current_user_id
-from app.models import Subject, Question
+from app.models import Subject, Question, User
 from app.schemas.subject import SubjectCreate, SubjectUpdate, SubjectResponse
 from app.services.export_pdf import export_subject_to_pdf_file
-from app.services.storage import delete_file_by_url
+from app.services.storage import delete_file_by_url, user_storage_key
 
 router = APIRouter()
 
@@ -106,9 +106,14 @@ async def export_subject_pdf(
     ]
     if not questions:
         raise HTTPException(status_code=400, detail="该错题本下暂无题目，无法导出")
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    storage_key = user_storage_key(u.openid)
     safe_name = (s.name or "错题本").replace("/", "-").strip()[:50]
     filename = f"错题本-{safe_name}.pdf"
-    url = export_subject_to_pdf_file(s.name or "错题本", questions, filename)
+    url = export_subject_to_pdf_file(s.name or "错题本", questions, filename, storage_key)
     return ExportPdfResponse(url=url, filename=filename)
 
 

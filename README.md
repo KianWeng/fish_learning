@@ -70,8 +70,8 @@ npm run dev:mp-weixin
 
 ### HTTPS 与文件访问
 
-- **文件存储**：上传文件不再直接暴露为静态目录，改为由应用按类型分目录存储并鉴权下发（头像 `avatars/`、题目图 `questions/`、PDF `pdfs/`）；详见上文环境变量与下方「生产部署」。
-- 题目图片（`/files/questions/...`）为公开访问（链接为 UUID 难以猜测），前端可直接用 `<img src="...">` 展示；PDF 需登录后访问。
+- **文件存储**：按用户分目录 `uploads/<storage_key>/avatars|questions|pdfs/`，`storage_key` 由用户微信 **openid** 经安全化得到（仅字母数字时直接用，否则用 sha256 前 32 位），URL 形如 `/files/avatars/<storage_key>/<filename>`；不暴露内部 user_id，统计逻辑（`storage_used_bytes`）不变。
+- 题目图片为公开访问，PDF 需登录后访问。
 
 ## 生产部署（HTTPS）
 

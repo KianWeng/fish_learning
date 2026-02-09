@@ -11,6 +11,7 @@ from app.services.storage import (
     save_avatar,
     save_question_image,
     delete_file_by_url,
+    user_storage_key,
     SUBDIR_PDFS,
 )
 from app.services.llm import analyze_question_image
@@ -33,11 +34,12 @@ async def upload_image(
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    path, size = save_question_image(content, file.filename or "image.jpg")
     r = await db.execute(select(User).where(User.id == user_id))
     u = r.scalar_one_or_none()
     if not u:
         raise HTTPException(status_code=401, detail="用户不存在")
+    storage_key = user_storage_key(u.openid)
+    path, size = save_question_image(content, file.filename or "image.jpg", storage_key)
     if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
         delete_file_by_url(path)
         raise HTTPException(
@@ -64,12 +66,12 @@ async def upload_and_analyze(
     content_type = file.content_type or ""
     logger.info("[upload/image/analyze] 收到图片: filename=%s, size=%d bytes", filename, len(content))
 
-    path, file_size = save_question_image(content, filename)
     r = await db.execute(select(User).where(User.id == user_id))
     u = r.scalar_one_or_none()
     if not u:
-        delete_file_by_url(path)
         raise HTTPException(status_code=401, detail="用户不存在")
+    storage_key = user_storage_key(u.openid)
+    path, file_size = save_question_image(content, filename, storage_key)
     if (u.storage_used_bytes or 0) + file_size > (u.storage_limit_bytes or 0):
         delete_file_by_url(path)
         raise HTTPException(
@@ -124,7 +126,8 @@ async def import_pdf(
             status_code=403,
             detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
         )
-    path, _ = save_upload_file(content, file.filename or "import.pdf", SUBDIR_PDFS)
+    storage_key = user_storage_key(u.openid)
+    path, _ = save_upload_file(content, file.filename or "import.pdf", SUBDIR_PDFS, storage_key)
     u.storage_used_bytes = (u.storage_used_bytes or 0) + file_size
     await db.flush()
     batch = ImportBatch(subject_id=subject_id, chapter_id=chapter_id, file_url=path)
@@ -178,7 +181,8 @@ async def upload_avatar(
         if deleted and freed:
             u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
             await db.flush()
-    path, size = save_avatar(content, file.filename or "avatar.jpg")
+    storage_key = user_storage_key(u.openid)
+    path, size = save_avatar(content, file.filename or "avatar.jpg", storage_key)
     if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
         delete_file_by_url(path)
         raise HTTPException(

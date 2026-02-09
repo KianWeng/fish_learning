@@ -1,7 +1,5 @@
 """
-通过应用路由鉴权下发文件，不直接暴露 uploads 目录。
-- /files/avatars/{filename}、/files/questions/{filename}：公开（链接为 UUID，难以猜测）
-- /files/pdfs/{filename}：需登录
+通过应用路由鉴权下发文件。路径支持按用户分目录：/files/avatars/<user_id>/<filename> 或旧格式 /files/avatars/<filename>。
 """
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import FileResponse
@@ -34,38 +32,41 @@ def require_auth(authorization: str | None = Header(None, alias="Authorization")
     return payload["sub"]
 
 
-# 图片缓存：浏览器/H5 可缓存，减少重复请求（前端小程序侧另有本地文件缓存）
 CACHE_CONTROL_IMAGE = "public, max-age=86400"
 
-@router.get("/avatars/{filename}")
-async def serve_avatar(filename: str):
-    """头像文件，公开访问。"""
-    path = get_file_path(f"/files/{SUBDIR_AVATARS}/{filename}")
-    if not path:
+
+@router.get("/avatars/{path:path}")
+async def serve_avatar(path: str):
+    """头像：path 为 <user_id>/<filename> 或旧格式 <filename>。"""
+    full_url = f"/files/{SUBDIR_AVATARS}/{path}"
+    p = get_file_path(full_url)
+    if not p:
         raise HTTPException(status_code=404, detail="文件不存在")
-    resp = FileResponse(path, media_type="image/jpeg")
+    resp = FileResponse(p, media_type="image/jpeg")
     resp.headers["Cache-Control"] = CACHE_CONTROL_IMAGE
     return resp
 
 
-@router.get("/questions/{filename}")
-async def serve_question_image(filename: str):
-    """题目图片，公开访问（链接为 UUID，难以猜测，便于前端 img 直接引用）。"""
-    path = get_file_path(f"/files/{SUBDIR_QUESTIONS}/{filename}")
-    if not path:
+@router.get("/questions/{path:path}")
+async def serve_question_image(path: str):
+    """题目图：path 为 <user_id>/<filename> 或旧格式 <filename>。"""
+    full_url = f"/files/{SUBDIR_QUESTIONS}/{path}"
+    p = get_file_path(full_url)
+    if not p:
         raise HTTPException(status_code=404, detail="文件不存在")
-    resp = FileResponse(path, media_type="image/jpeg")
+    resp = FileResponse(p, media_type="image/jpeg")
     resp.headers["Cache-Control"] = CACHE_CONTROL_IMAGE
     return resp
 
 
-@router.get("/pdfs/{filename}")
+@router.get("/pdfs/{path:path}")
 async def serve_pdf(
-    filename: str,
+    path: str,
     _: int = Depends(require_auth),
 ):
-    """PDF 文件，需登录后访问。"""
-    path = get_file_path(f"/files/{SUBDIR_PDFS}/{filename}")
-    if not path:
+    """PDF：path 为 <user_id>/<filename> 或旧格式 <filename>，需登录。"""
+    full_url = f"/files/{SUBDIR_PDFS}/{path}"
+    p = get_file_path(full_url)
+    if not p:
         raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(path, media_type="application/pdf")
+    return FileResponse(p, media_type="application/pdf")
