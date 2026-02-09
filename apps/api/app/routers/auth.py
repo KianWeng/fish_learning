@@ -8,7 +8,7 @@ import jwt
 from app.config import settings
 from app.database import get_db
 from app.models import User
-from app.schemas.auth import WechatLoginIn, LoginOut, UserOut
+from app.schemas.auth import WechatLoginIn, UpdateProfileIn, LoginOut, UserOut
 
 router = APIRouter()
 
@@ -69,6 +69,12 @@ async def wechat_login(body: WechatLoginIn, db: AsyncSession = Depends(get_db)):
         db.add(user)
         await db.flush()
         await db.refresh(user)
+    if body.nickname is not None:
+        user.nickname = body.nickname or None
+    if body.avatar_url is not None:
+        user.avatar_url = body.avatar_url or None
+    await db.flush()
+    await db.refresh(user)
     token = _create_token(user.id)
     return LoginOut(
         token=token,
@@ -96,6 +102,39 @@ async def get_me(authorization: str | None = None, db: AsyncSession = Depends(ge
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="用户不存在")
+    return UserOut(
+        id=user.id,
+        openid=user.openid,
+        nickname=user.nickname,
+        avatar_url=user.avatar_url,
+        created_at=user.created_at.isoformat() if user.created_at else "",
+    )
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(
+    body: UpdateProfileIn,
+    authorization: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """更新当前用户昵称、头像。"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="未登录")
+    token = authorization[7:].strip()
+    payload = _decode_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=401, detail="登录已过期")
+    user_id = payload["sub"]
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    if body.nickname is not None:
+        user.nickname = body.nickname or None
+    if body.avatar_url is not None:
+        user.avatar_url = body.avatar_url or None
+    await db.flush()
+    await db.refresh(user)
     return UserOut(
         id=user.id,
         openid=user.openid,

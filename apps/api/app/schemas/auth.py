@@ -3,6 +3,13 @@ from pydantic import BaseModel
 
 class WechatLoginIn(BaseModel):
     code: str
+    nickname: str | None = None
+    avatar_url: str | None = None
+
+
+class UpdateProfileIn(BaseModel):
+    nickname: str | None = None
+    avatar_url: str | None = None
 
 
 class UserOut(BaseModel):
