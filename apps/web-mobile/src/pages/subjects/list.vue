@@ -1,8 +1,5 @@
 <template>
   <view class="page">
-    <view class="toolbar">
-      <button class="btn primary" @click="onAddTap">添加</button>
-    </view>
     <view class="list" v-if="list.length">
       <view class="item" v-for="s in list" :key="s.id">
         <text class="name">{{ s.name }}</text>
@@ -13,8 +10,10 @@
         </view>
       </view>
     </view>
-    <view class="empty" v-else-if="!loading">暂无科目，请添加</view>
+    <view class="empty" v-else-if="!loading">暂无科目，点击右下角 + 添加</view>
     <view class="empty" v-else>加载中...</view>
+
+    <view class="float-btn" @click="onAddTap">+</view>
   </view>
 </template>
 
@@ -88,20 +87,17 @@ onLoad(() => {
   uni.setNavigationBarTitle({ title: '科目管理' })
 })
 
-onMounted(load)
-
 onShow(() => {
   if (getResultPath()) {
     uni.navigateTo({ url: '/pages/questions/add' })
+    return
   }
+  load()
 })
 </script>
 
 <style scoped>
-.page { padding: 24rpx; }
-.toolbar { margin-bottom: 24rpx; }
-.btn { padding: 24rpx; border-radius: 12rpx; font-size: 30rpx; }
-.primary { background: #07c160; color: #fff; border: none; }
+.page { padding: 24rpx 24rpx 140rpx; min-height: 100vh; }
 .list { display: flex; flex-direction: column; gap: 16rpx; }
 .item {
   display: flex; align-items: center; justify-content: space-between;
@@ -112,4 +108,21 @@ onShow(() => {
 .link { font-size: 26rpx; color: #07c160; }
 .link.danger { color: #ee0a24; }
 .empty { padding: 60rpx; text-align: center; color: #999; font-size: 28rpx; }
+
+.float-btn {
+  position: fixed;
+  right: 32rpx;
+  bottom: 60rpx;
+  width: 96rpx;
+  height: 96rpx;
+  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  box-shadow: 0 8rpx 24rpx rgba(7,193,96,0.35);
+  z-index: 10;
+}
 </style>
