@@ -33,16 +33,21 @@
           <text class="arrow">▼</text>
         </view>
       </picker>
-      <view class="filter-btn">
-        <text>状态: 全部</text>
-        <text class="arrow">▼</text>
-      </view>
+      <picker mode="selector" :range="statusOptions" range-key="label" :value="statusIndex" @change="onStatusFilterChange">
+        <view class="filter-btn">
+          <text>状态: {{ statusOptions[statusIndex]?.label }}</text>
+          <text class="arrow">▼</text>
+        </view>
+      </picker>
     </view>
 
     <!-- 列表 -->
     <view class="list" v-if="filteredList.length">
       <view class="list-item" v-for="q in filteredList" :key="q.id" @click="toggleSelect(q.id)">
-        <view class="item-thumb"></view>
+        <view class="item-thumb">
+          <image v-if="questionImageUrl(q)" class="item-thumb-img" :src="questionImageUrl(q)" mode="aspectFill" />
+          <text v-else class="item-thumb-placeholder">题</text>
+        </view>
         <view class="item-main">
           <text class="item-subject">题目 #{{ q.id }}</text>
           <view class="item-action" @click.stop="goReviewOne(q)">
@@ -55,13 +60,11 @@
         </view>
       </view>
     </view>
-    <view class="empty" v-else-if="!loading">今日暂无待复习题目</view>
+    <view class="empty" v-else-if="!loading">{{ statusOptions[statusIndex]?.label === '待复习' ? '今日暂无待复习题目' : '暂无题目' }}</view>
     <view class="empty" v-else>加载中...</view>
 
     <!-- 底部操作栏 -->
     <view class="bottom-bar" v-if="filteredList.length">
-      <view class="bar-btn">移动</view>
-      <view class="bar-btn">删除</view>
       <view class="bar-btn primary" @click="startReview">
         复习 ({{ selectedIds.length || filteredList.length }})
       </view>
@@ -74,9 +77,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
-import { getTodayReviews, submitReviewResult } from '@/api/reviews.js'
+import { getReviewList, getReviewStats } from '@/api/reviews.js'
 import { listSubjects } from '@/api/subjects.js'
+import { API_BASE_URL } from '@/config.js'
 
 const list = ref([])
 const loading = ref(true)
@@ -84,6 +89,15 @@ const selectedIds = ref([])
 const filterSubject = ref(null)
 const subjects = ref([])
 const subjectOptions = ref([{ id: null, name: '全部' }])
+const stats = ref({ total: 0, mastered: 0 })
+
+const statusOptions = [
+  { label: '全部', value: 'all' },
+  { label: '待复习', value: 'today' },
+  { label: '已排期', value: 'scheduled' },
+  { label: '未开始', value: 'new' }
+]
+const statusIndex = ref(1)
 
 const subjectFilterName = computed(() => {
   if (!filterSubject.value) return '全部'
@@ -96,16 +110,28 @@ const filteredList = computed(() => {
   return list.value.filter(q => q.subject_id === filterSubject.value)
 })
 
-const masteryPercent = computed(() => 0)
+/** 掌握度 = 已掌握题目数 ÷ 全部题目数 × 100 */
+const masteryPercent = computed(() => {
+  const total = stats.value.total || 0
+  if (total === 0) return 0
+  const mastered = stats.value.mastered || 0
+  return Math.round((mastered / total) * 100)
+})
 
 async function load() {
   loading.value = true
+  const status = statusOptions[statusIndex.value]?.value ?? 'today'
   try {
-    const [reviews, subj] = await Promise.all([getTodayReviews(), listSubjects()])
-    list.value = reviews
+    const [reviews, subj, reviewStats] = await Promise.all([
+      getReviewList(status),
+      listSubjects(),
+      getReviewStats().catch(() => ({ total: 0, mastered: 0 }))
+    ])
+    list.value = reviews || []
     subjects.value = subj || []
     subjectOptions.value = [{ id: null, name: '全部' }, ...subjects.value]
-    selectedIds.value = reviews.map(q => q.id)
+    selectedIds.value = list.value.map(q => q.id)
+    stats.value = reviewStats || { total: 0, mastered: 0 }
   } catch (e) {
     uni.showToast({ title: e.message || '加载失败', icon: 'none' })
   } finally {
@@ -123,10 +149,21 @@ function goReviewOne(q) {
   uni.navigateTo({ url: `/pages/review/do?ids=${q.id}` })
 }
 
+function questionImageUrl(q) {
+  const url = q?.image_url
+  if (!url || typeof url !== 'string') return ''
+  return url.startsWith('http') ? url : API_BASE_URL.replace(/\/$/, '') + (url.startsWith('/') ? url : '/' + url)
+}
+
 function onSubjectFilterChange(e) {
-  const i = e.detail.value
+  const i = Number(e.detail.value)
   const opts = subjectOptions.value[i]
   filterSubject.value = opts && opts.id != null ? opts.id : null
+}
+
+function onStatusFilterChange(e) {
+  statusIndex.value = Number(e.detail.value)
+  load()
 }
 
 function startReview() {
@@ -136,6 +173,7 @@ function startReview() {
 }
 
 onMounted(load)
+onShow(() => { load() })
 </script>
 
 <style scoped>
@@ -177,7 +215,18 @@ onMounted(load)
   border: 2rpx solid var(--primary-bg);
   box-shadow: var(--shadow);
 }
-.item-thumb { width: 100rpx; height: 100rpx; background: var(--bg-page); border-radius: 12rpx; flex-shrink: 0; }
+.item-thumb {
+  width: 100rpx; height: 100rpx;
+  background: var(--bg-page);
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.item-thumb-img { width: 100%; height: 100%; display: block; }
+.item-thumb-placeholder { font-size: 36rpx; color: var(--text-hint); }
 .item-main { flex: 1; min-width: 0; }
 .item-subject { display: block; font-size: 28rpx; font-weight: 500; color: var(--text); }
 .item-action { display: inline-flex; align-items: center; gap: 8rpx; margin-top: 8rpx; }
