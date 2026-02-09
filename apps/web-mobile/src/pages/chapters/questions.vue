@@ -5,9 +5,25 @@
       <text class="sub" v-if="list.length">共 {{ list.length }} 道错题</text>
     </view>
     <view class="list" v-if="list.length">
-      <view class="item" v-for="q in list" :key="q.id" @click="goDetail(q.id)">
-        <text class="content">{{ q.content }}</text>
-        <text class="time">{{ q.created_at }}</text>
+      <view
+        class="item-wrap"
+        v-for="q in list"
+        :key="q.id"
+        @touchstart="onTouchStart($event, q)"
+        @touchmove="onTouchMove($event, q)"
+        @touchend="onTouchEnd"
+      >
+        <view class="item-delete" @click.stop="onDelete(q)">删除</view>
+        <view
+          class="item-slide"
+          :style="{ transform: openId === q.id ? 'translateX(-120rpx)' : 'translateX(0)' }"
+          @click="onItemClick(q)"
+        >
+          <view class="item-main">
+            <text class="content">{{ q.content }}</text>
+            <text class="time">{{ q.created_at }}</text>
+          </view>
+        </view>
       </view>
     </view>
     <view class="empty" v-else-if="!loading">
@@ -23,7 +39,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { listQuestions } from '@/api/questions.js'
+import { listQuestions, deleteQuestion } from '@/api/questions.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 
 const subjectId = ref(0)
@@ -32,6 +48,48 @@ const subjectName = ref('')
 const chapterName = ref('')
 const list = ref([])
 const loading = ref(true)
+const openId = ref(null)
+let touchStartX = 0
+
+function onTouchStart(e, q) {
+  touchStartX = e.touches[0].clientX
+}
+
+function onTouchMove(e, q) {
+  const x = e.touches[0].clientX
+  const delta = x - touchStartX
+  if (delta < -40) openId.value = q.id
+  else if (delta > 40) openId.value = null
+}
+
+function onTouchEnd() {}
+
+function onItemClick(q) {
+  if (openId.value === q.id) {
+    openId.value = null
+    return
+  }
+  goDetail(q.id)
+}
+
+async function onDelete(q) {
+  const ok = await new Promise(r =>
+    uni.showModal({
+      title: '确认删除',
+      content: '删除这道错题？',
+      success: res => r(res.confirm)
+    })
+  )
+  if (!ok) return
+  try {
+    await deleteQuestion(q.id)
+    list.value = list.value.filter(x => x.id !== q.id)
+    openId.value = null
+    uni.showToast({ title: '已删除' })
+  } catch (e) {
+    uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+  }
+}
 
 async function load() {
   if (!subjectId.value || !chapterId.value) return
@@ -46,6 +104,7 @@ async function load() {
 }
 
 function goDetail(id) {
+  openId.value = null
   uni.navigateTo({ url: `/pages/questions/detail?id=${id}` })
 }
 
@@ -122,14 +181,61 @@ onShow(() => {
 .title { font-size: 36rpx; font-weight: 600; color: #1a1a2e; display: block; }
 .sub { font-size: 26rpx; color: #6b7280; margin-top: 8rpx; display: block; }
 .list { display: flex; flex-direction: column; gap: 16rpx; }
-.item {
-  padding: 28rpx;
-  background: #fff;
+.item-wrap {
+  position: relative;
   border-radius: 16rpx;
+  overflow: hidden;
+  background: #fff;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
 }
-.content { font-size: 28rpx; color: #333; display: block; }
+.item-slide {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 28rpx 24rpx;
+  background: #fff;
+  transition: transform 0.2s ease;
+  min-height: 100rpx;
+  box-sizing: border-box;
+}
+/* 右侧固定一块白色遮罩盖住删除区，未滑动时不透红；左滑时随整块左移露出删除 */
+.item-slide::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 120rpx;
+  background: #fff;
+  z-index: 0;
+}
+.item-main { position: relative; z-index: 1; min-width: 0; }
+.content { font-size: 28rpx; color: #333; display: block; line-height: 1.4; }
 .time { font-size: 24rpx; color: #999; margin-top: 12rpx; display: block; }
+.item-delete {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 120rpx;
+  background: #ee0a24;
+  color: #fff;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.item-delete::after { border: none; }
+/* 删除按钮稍向内缩并做圆角，避免贴住最外圆角透红 */
+.item-delete {
+  right: 2rpx;
+  width: 118rpx;
+  border-radius: 0 14rpx 14rpx 0;
+}
 .empty { padding: 80rpx 32rpx; text-align: center; }
 .empty-text { display: block; color: #6b7280; font-size: 30rpx; }
 .empty-hint { display: block; margin-top: 16rpx; color: #9ca3af; font-size: 26rpx; }

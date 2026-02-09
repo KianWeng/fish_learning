@@ -1,11 +1,14 @@
 <template>
   <view class="page">
-    <view class="list" v-if="list.length">
-      <view class="item" v-for="c in list" :key="c.id" @click="goChapterQuestions(c)">
-        <text class="name">{{ c.name }}</text>
-        <view class="actions" @click.stop>
-          <text class="link" @click="goEdit(c)">编辑</text>
-          <text class="link danger" @click="onDelete(c)">删除</text>
+    <view class="list-wrap" v-if="list.length">
+      <view class="list">
+        <view class="item" v-for="c in list" :key="c.id" @click="goChapterQuestions(c)">
+          <text class="name">{{ c.name }}</text>
+          <view class="more-btn" @click.stop="openItemMenu(c)">
+            <view class="dot"></view>
+            <view class="dot"></view>
+            <view class="dot"></view>
+          </view>
         </view>
       </view>
     </view>
@@ -65,6 +68,16 @@ function goAdd() {
   uni.navigateTo({ url: `/pages/chapters/edit?subject_id=${subjectId.value}&subject_name=${encodeURIComponent(subjectName.value)}` })
 }
 
+function openItemMenu(c) {
+  uni.showActionSheet({
+    itemList: ['编辑', '删除'],
+    success: (res) => {
+      if (res.tapIndex === 0) goEdit(c)
+      else if (res.tapIndex === 1) onDelete(c)
+    }
+  })
+}
+
 function goEdit(c) {
   uni.navigateTo({ url: `/pages/chapters/edit?id=${c.id}&subject_id=${subjectId.value}&name=${encodeURIComponent(c.name)}&sort=${c.sort}` })
 }
@@ -120,15 +133,35 @@ onShow(() => {
 
 <style scoped>
 .page { padding: 24rpx 24rpx 140rpx; min-height: 100vh; background: #f5f6fa; }
-.list { display: flex; flex-direction: column; gap: 16rpx; }
+.list-wrap {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+}
+.list { display: flex; flex-direction: column; gap: 12rpx; }
 .item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 28rpx; background: #fff; border-radius: 12rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  padding: 28rpx 24rpx;
+  background: #f8f9fb;
+  border-radius: 12rpx;
 }
-.name { font-size: 30rpx; font-weight: 500; }
-.actions { display: flex; gap: 24rpx; }
-.link { font-size: 26rpx; color: #07c160; }
-.link.danger { color: #ee0a24; }
+.name { font-size: 30rpx; font-weight: 500; color: #333; flex: 1; }
+.more-btn {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  flex-shrink: 0;
+}
+.dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #999;
+}
 .empty { padding: 60rpx; text-align: center; color: #999; font-size: 28rpx; }
 .float-btn {
   position: fixed;

@@ -9,6 +9,10 @@ export function getQuestion(id) {
   return request.get(`/questions/${id}`)
 }
 
+export function deleteQuestion(id) {
+  return request.delete(`/questions/${id}`)
+}
+
 export function createQuestion(data) {
   return request.post('/questions', data)
 }
