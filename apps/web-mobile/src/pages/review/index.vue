@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <text class="title">复习 ({{ selectedIds.length }})</text>
-      <text class="right" @click="filterSubject = null">全部</text>
+      <text class="right" @click="filterCourse = ''; courseFilterIndex = 0">全部</text>
     </view>
 
     <!-- 汇总卡片 -->
@@ -27,9 +27,9 @@
       <view class="filter-btn">
         <text>排序: 急迫度</text>
       </view>
-      <picker :range="subjectOptions" range-key="name" @change="onSubjectFilterChange">
+      <picker mode="selector" :range="courseFilterOptions" range-key="label" :value="courseFilterIndex" @change="onCourseFilterChange">
         <view class="filter-btn">
-          <text>科目: {{ subjectFilterName }}</text>
+          <text>科目: {{ courseFilterName }}</text>
           <text class="arrow">▼</text>
         </view>
       </picker>
@@ -44,12 +44,11 @@
     <!-- 列表 -->
     <view class="list" v-if="filteredList.length">
       <view class="list-item" v-for="q in filteredList" :key="q.id" @click="toggleSelect(q.id)">
-        <view class="item-thumb">
-          <CachedImage v-if="questionImageUrl(q)" img-class="item-thumb-img" :src="questionImageUrl(q)" mode="aspectFill" />
-          <text v-else class="item-thumb-placeholder">题</text>
+        <view class="item-course-icon">
+          <image class="course-icon-img" :src="courseIconUrl(q)" mode="aspectFit" />
         </view>
         <view class="item-main">
-          <text class="item-subject">题目 #{{ q.id }}</text>
+          <text class="item-subject">{{ q.subject_name || ('题目 #' + q.id) }}</text>
           <view class="item-action" @click.stop="goReviewOne(q)">
             <text class="action-dot">!</text>
             <text class="action-text">立即复习</text>
@@ -79,17 +78,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
-import CachedImage from '@/components/CachedImage.vue'
 import { getReviewList, getReviewStats } from '@/api/reviews.js'
-import { listSubjects } from '@/api/subjects.js'
-import { API_BASE_URL } from '@/config.js'
+import { getCourseIconDataUri } from '@/utils/course.js'
+import { COMMON_COURSES } from '@/utils/course.js'
 
 const list = ref([])
 const loading = ref(true)
 const selectedIds = ref([])
-const filterSubject = ref(null)
-const subjects = ref([])
-const subjectOptions = ref([{ id: null, name: '全部' }])
+const filterCourse = ref('')
+const courseFilterOptions = ref([
+  { label: '全部', value: '' },
+  ...COMMON_COURSES.map((c) => ({ label: c, value: c }))
+])
+const courseFilterIndex = ref(0)
 const stats = ref({ total: 0, mastered: 0 })
 
 const statusOptions = [
@@ -100,15 +101,14 @@ const statusOptions = [
 ]
 const statusIndex = ref(1)
 
-const subjectFilterName = computed(() => {
-  if (!filterSubject.value) return '全部'
-  const s = subjects.value.find(x => x.id === filterSubject.value)
-  return s ? s.name : '全部'
+const courseFilterName = computed(() => {
+  const opts = courseFilterOptions.value[courseFilterIndex.value]
+  return opts ? opts.label : '全部'
 })
 
 const filteredList = computed(() => {
-  if (!filterSubject.value) return list.value
-  return list.value.filter(q => q.subject_id === filterSubject.value)
+  if (!filterCourse.value) return list.value
+  return list.value.filter(q => (q.subject_course || '') === filterCourse.value)
 })
 
 /** 掌握度 = 已掌握题目数 ÷ 全部题目数 × 100 */
@@ -123,16 +123,21 @@ async function load() {
   loading.value = true
   const status = statusOptions[statusIndex.value]?.value ?? 'today'
   try {
-    const [reviews, subj, reviewStats] = await Promise.all([
+    const [reviews, reviewStats] = await Promise.all([
       getReviewList(status),
-      listSubjects(),
       getReviewStats().catch(() => ({ total: 0, mastered: 0 }))
     ])
     list.value = reviews || []
-    subjects.value = subj || []
-    subjectOptions.value = [{ id: null, name: '全部' }, ...subjects.value]
     selectedIds.value = list.value.map(q => q.id)
     stats.value = reviewStats || { total: 0, mastered: 0 }
+    const customCourses = [...new Set(list.value.map((q) => q.subject_course).filter(Boolean))]
+      .filter((c) => !COMMON_COURSES.includes(c))
+      .sort((a, b) => a.localeCompare(b))
+    courseFilterOptions.value = [
+      { label: '全部', value: '' },
+      ...COMMON_COURSES.map((c) => ({ label: c, value: c })),
+      ...customCourses.map((c) => ({ label: c, value: c }))
+    ]
   } catch (e) {
     uni.showToast({ title: e.message || '加载失败', icon: 'none' })
   } finally {
@@ -150,16 +155,16 @@ function goReviewOne(q) {
   uni.navigateTo({ url: `/pages/review/do?ids=${q.id}` })
 }
 
-function questionImageUrl(q) {
-  const url = q?.image_url
-  if (!url || typeof url !== 'string') return ''
-  return url.startsWith('http') ? url : API_BASE_URL.replace(/\/$/, '') + (url.startsWith('/') ? url : '/' + url)
+function courseIconUrl(q) {
+  return getCourseIconDataUri(q?.subject_course)
 }
 
-function onSubjectFilterChange(e) {
+function onCourseFilterChange(e) {
   const i = Number(e.detail.value)
-  const opts = subjectOptions.value[i]
-  filterSubject.value = opts && opts.id != null ? opts.id : null
+  if (i >= 0 && i < courseFilterOptions.value.length) {
+    courseFilterIndex.value = i
+    filterCourse.value = courseFilterOptions.value[i].value ?? ''
+  }
 }
 
 function onStatusFilterChange(e) {
@@ -209,25 +214,21 @@ onShow(() => { load() })
 .arrow { font-size: 20rpx; color: var(--text-hint); }
 .list { display: flex; flex-direction: column; gap: 20rpx; }
 .list-item {
-  display: flex; align-items: center; gap: 24rpx;
+  display: flex; align-items: center; gap: 20rpx;
   padding: 24rpx;
   background: var(--bg-card);
   border-radius: 24rpx;
   border: 2rpx solid var(--primary-bg);
   box-shadow: var(--shadow);
 }
-.item-thumb {
-  width: 100rpx; height: 100rpx;
-  background: var(--bg-page);
+.item-course-icon {
+  width: 56rpx; height: 56rpx;
+  background: var(--primary-bg);
   border-radius: 12rpx;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-.item-thumb-img { width: 100%; height: 100%; display: block; }
-.item-thumb-placeholder { font-size: 36rpx; color: var(--text-hint); }
+.course-icon-img { width: 36rpx; height: 36rpx; }
 .item-main { flex: 1; min-width: 0; }
 .item-subject { display: block; font-size: 28rpx; font-weight: 500; color: var(--text); }
 .item-action { display: inline-flex; align-items: center; gap: 8rpx; margin-top: 8rpx; }

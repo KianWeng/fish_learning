@@ -1,8 +1,20 @@
 <template>
   <view class="page">
+    <view class="header-row">
+      <text class="header-title">全部错题</text>
+      <picker mode="selector" :range="courseFilterOptions" range-key="label" :value="courseFilterIndex" @change="onCourseFilterChange">
+        <view class="header-filter">
+          <text>{{ courseFilterOptions[courseFilterIndex]?.label || '全部' }}</text>
+          <text class="header-filter-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
     <view class="list" v-if="list.length">
       <view class="item" v-for="s in list" :key="s.id">
-        <text class="name">{{ s.name }}</text>
+        <view class="item-left">
+          <text class="name">{{ s.name }}</text>
+          <text class="course-tag" v-if="s.course">{{ s.course }}</text>
+        </view>
         <view class="actions">
           <text class="link" @click="goChapters(s)">章节</text>
           <text class="link" @click="goEdit(s)">编辑</text>
@@ -10,7 +22,7 @@
         </view>
       </view>
     </view>
-    <view class="empty" v-else-if="!loading">暂无科目，点击右下角 + 添加</view>
+    <view class="empty" v-else-if="!loading">暂无错题本，点击右下角 + 添加</view>
     <view class="empty" v-else>加载中...</view>
 
     <view class="float-btn" @click="onAddTap">+</view>
@@ -22,18 +34,47 @@ import { ref, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { listSubjects, deleteSubject } from '@/api/subjects.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
+import { COMMON_COURSES } from '@/utils/course.js'
 
 const list = ref([])
 const loading = ref(true)
+/** 当前选中的科目筛选：空字符串表示「全部」 */
+const selectedCourse = ref('')
+const courseFilterOptions = ref([
+  { label: '全部', value: '' },
+  ...COMMON_COURSES.map((c) => ({ label: c, value: c }))
+])
+const courseFilterIndex = ref(0)
 
 async function load() {
   loading.value = true
+  const course = selectedCourse.value
   try {
-    list.value = await listSubjects()
+    list.value = await listSubjects(course ? { course } : {})
+    if (!course) {
+      const customCourses = [...new Set(list.value.map((s) => s.course).filter(Boolean))]
+        .filter((c) => !COMMON_COURSES.includes(c))
+        .sort((a, b) => a.localeCompare(b))
+      courseFilterOptions.value = [
+        { label: '全部', value: '' },
+        ...COMMON_COURSES.map((c) => ({ label: c, value: c })),
+        ...customCourses.map((c) => ({ label: c, value: c }))
+      ]
+    }
   } catch (e) {
     uni.showToast({ title: e.message || '加载失败', icon: 'none' })
+    list.value = []
   } finally {
     loading.value = false
+  }
+}
+
+function onCourseFilterChange(e) {
+  const idx = Number(e.detail.value)
+  if (idx >= 0 && idx < courseFilterOptions.value.length) {
+    courseFilterIndex.value = idx
+    selectedCourse.value = courseFilterOptions.value[idx].value ?? ''
+    load()
   }
 }
 
@@ -64,7 +105,8 @@ function goAdd() {
 }
 
 function goEdit(s) {
-  uni.navigateTo({ url: `/pages/subjects/edit?id=${s.id}&name=${encodeURIComponent(s.name)}&sort=${s.sort}` })
+  const course = s.course != null ? encodeURIComponent(s.course) : ''
+  uni.navigateTo({ url: `/pages/subjects/edit?id=${s.id}&name=${encodeURIComponent(s.name)}&sort=${s.sort}&course=${course}` })
 }
 
 function goChapters(s) {
@@ -99,14 +141,39 @@ onShow(() => {
 <style scoped>
 .page { padding: 32rpx 32rpx 140rpx; min-height: 100vh; background: var(--bg-page); }
 .list { display: flex; flex-direction: column; gap: 16rpx; }
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+  padding: 0 4rpx;
+}
+.header-title { font-size: 36rpx; font-weight: 600; color: var(--text); }
+.header-filter {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 24rpx;
+  min-width: 120rpx;
+  background: var(--primary-bg);
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: var(--primary);
+  text-align: center;
+}
+.header-filter-arrow { font-size: 20rpx; color: var(--text-hint); }
 .item {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
   padding: 28rpx;
   background: var(--bg-card);
   border-radius: 24rpx;
   box-shadow: var(--shadow-card);
 }
-.name { font-size: 30rpx; font-weight: 500; color: var(--text); }
+.item-left { display: flex; align-items: center; gap: 12rpx; flex: 1; min-width: 0; }
+.item .name { font-size: 30rpx; font-weight: 500; color: var(--text); }
+.course-tag { font-size: 22rpx; color: var(--text-hint); flex-shrink: 0; }
+.item .actions { flex-shrink: 0; }
 .actions { display: flex; gap: 24rpx; }
 .link { font-size: 26rpx; color: var(--primary); }
 .link.danger { color: #ee0a24; }

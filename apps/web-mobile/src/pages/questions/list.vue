@@ -7,6 +7,12 @@
         <text class="link" @click="onAddTap">添加</text>
         <text class="link" @click="goStats">数据统计</text>
         <text class="link" @click="goAllQuestions">全部错题</text>
+        <picker mode="selector" :range="courseFilterOptions" range-key="label" :value="courseFilterIndex" @change="onCourseFilterChange">
+          <view class="header-filter">
+            <text>{{ courseFilterOptions[courseFilterIndex]?.label || '全部' }}</text>
+            <text class="header-filter-arrow">▼</text>
+          </view>
+        </picker>
       </view>
     </view>
 
@@ -59,18 +65,46 @@ import { listSubjects, updateSubject, deleteSubject, exportSubjectPdf } from '@/
 import { listQuestions } from '@/api/questions.js'
 import { uploadImage } from '@/api/questions.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
+import { COMMON_COURSES } from '@/utils/course.js'
 
 const list = ref([])
 const loading = ref(true)
 const subjectCounts = ref({})
+const selectedCourse = ref('')
+const courseFilterOptions = ref([
+  { label: '全部', value: '' },
+  ...COMMON_COURSES.map((c) => ({ label: c, value: c }))
+])
+const courseFilterIndex = ref(0)
+
+function onCourseFilterChange(e) {
+  const idx = Number(e.detail.value)
+  if (idx >= 0 && idx < courseFilterOptions.value.length) {
+    courseFilterIndex.value = idx
+    selectedCourse.value = courseFilterOptions.value[idx].value ?? ''
+    load()
+  }
+}
 
 async function load() {
   loading.value = true
+  const course = selectedCourse.value
   try {
-    list.value = await listSubjects()
+    list.value = await listSubjects(course ? { course } : {})
     for (const s of list.value) {
       const res = await listQuestions({ subject_id: s.id })
       subjectCounts.value[s.id] = res.length
+    }
+    // 当本次是「全部」时，把当前列表里出现过的自定义科目加入下拉选项，便于筛选
+    if (!course) {
+      const customCourses = [...new Set(list.value.map((s) => s.course).filter(Boolean))]
+        .filter((c) => !COMMON_COURSES.includes(c))
+        .sort((a, b) => a.localeCompare(b))
+      courseFilterOptions.value = [
+        { label: '全部', value: '' },
+        ...COMMON_COURSES.map((c) => ({ label: c, value: c })),
+        ...customCourses.map((c) => ({ label: c, value: c }))
+      ]
     }
   } catch (e) {
     uni.showToast({ title: e.message || '加载失败', icon: 'none' })
@@ -219,7 +253,9 @@ onLoad(() => {
 onShow(() => {
   if (getResultPath()) {
     uni.navigateTo({ url: '/pages/questions/add' })
+    return
   }
+  load()
 })
 
 function goAllQuestions() {
@@ -231,7 +267,6 @@ function goStats() {
 }
 
 onMounted(() => {
-  load()
   const pages = getCurrentPages()
   const page = pages[pages.length - 1]
   const opts = page.options || {}
@@ -250,8 +285,19 @@ onMounted(() => {
 .header { position: relative; padding: 20rpx 0 28rpx; }
 .title { font-size: 40rpx; font-weight: 600; color: var(--text); }
 .sub { display: block; font-size: 26rpx; color: var(--text-secondary); margin-top: 6rpx; }
-.header-right { position: absolute; right: 0; top: 20rpx; display: flex; align-items: center; gap: 20rpx; }
+.header-right { position: absolute; right: 0; top: 20rpx; display: flex; align-items: center; gap: 16rpx; flex-wrap: wrap; }
 .link { font-size: 26rpx; color: var(--primary); }
+.header-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  background: var(--primary-bg);
+  border-radius: 10rpx;
+  font-size: 24rpx;
+  color: var(--primary);
+}
+.header-filter-arrow { font-size: 18rpx; color: var(--text-hint); }
 
 .list-wrap {
   max-width: 680rpx;

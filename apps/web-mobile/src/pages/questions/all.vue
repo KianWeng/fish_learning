@@ -2,7 +2,7 @@
   <view class="page">
     <view class="filter">
       <picker :range="subjectOptions" range-key="name" @change="onSubjectChange">
-        <view class="filter-item">{{ subjectName || '全部科目' }}</view>
+        <view class="filter-item">{{ subjectName || '全部错题本' }}</view>
       </picker>
       <picker v-if="subjectId" :range="chapterOptions" range-key="name" @change="onChapterChange">
         <view class="filter-item">{{ chapterName || '全部章节' }}</view>
@@ -36,7 +36,7 @@ const chapterId = ref(null)
 const chapterName = ref('')
 const subjects = ref([])
 const chapters = ref([])
-const subjectOptions = ref([{ id: null, name: '全部科目' }])
+const subjectOptions = ref([{ id: null, name: '全部错题本' }])
 const chapterOptions = ref([{ id: null, name: '全部章节' }])
 
 async function load() {
@@ -56,10 +56,10 @@ async function load() {
 async function loadSubjects() {
   try {
     subjects.value = await listSubjects()
-    subjectOptions.value = [{ id: null, name: '全部科目' }, ...subjects.value]
+    subjectOptions.value = [{ id: null, name: '全部错题本' }, ...subjects.value]
   } catch (e) {
     subjects.value = []
-    subjectOptions.value = [{ id: null, name: '全部科目' }]
+    subjectOptions.value = [{ id: null, name: '全部错题本' }]
   }
 }
 

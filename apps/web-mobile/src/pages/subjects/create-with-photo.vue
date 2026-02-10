@@ -2,6 +2,16 @@
   <view class="page">
     <view class="section">
       <view class="field">
+        <text class="label">科目</text>
+        <picker :range="courseOptions" range-key="label" :value="courseIndex" @change="onCourseChange">
+          <view class="picker-value">{{ courseOptions[courseIndex]?.label || '请选择科目' }}</view>
+        </picker>
+      </view>
+      <view class="field" v-if="isCustomCourse">
+        <text class="label">自定义科目名</text>
+        <input class="input" v-model="customCourseName" placeholder="请输入科目名称" />
+      </view>
+      <view class="field">
         <text class="label">错题本名称</text>
         <input class="input" v-model="form.name" placeholder="请输入错题本名称" />
       </view>
@@ -25,16 +35,30 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
 import { createSubject } from '@/api/subjects.js'
 import { uploadImage } from '@/api/questions.js'
+import { COURSE_PICKER_OPTIONS, CUSTOM_COURSE_LABEL } from '@/utils/course.js'
 
 const form = ref({ name: '' })
+const courseIndex = ref(0)
+const customCourseName = ref('')
+const courseOptions = ref(COURSE_PICKER_OPTIONS.map((c) => ({ label: c, value: c })))
+const isCustomCourse = computed(() => courseOptions.value[courseIndex.value]?.value === CUSTOM_COURSE_LABEL)
 const imageUrl = ref('')
 const imageFullUrl = ref('')
 const saving = ref(false)
+
+function getEffectiveCourse() {
+  if (isCustomCourse.value && customCourseName.value.trim()) return customCourseName.value.trim()
+  const v = courseOptions.value[courseIndex.value]?.value
+  return v === CUSTOM_COURSE_LABEL ? '' : (v || '')
+}
+function onCourseChange(e) {
+  courseIndex.value = Number(e.detail.value)
+}
 
 watch(imageUrl, (url) => {
   imageFullUrl.value = url ? (url.startsWith('http') ? url : API_BASE_URL + url) : ''
@@ -69,10 +93,15 @@ async function submit() {
     uni.showToast({ title: '请输入错题本名称', icon: 'none' })
     return
   }
+  if (isCustomCourse.value && !customCourseName.value.trim()) {
+    uni.showToast({ title: '请输入自定义科目名', icon: 'none' })
+    return
+  }
   saving.value = true
   try {
     await createSubject({
       name,
+      course: getEffectiveCourse() || undefined,
       sort: 0,
       cover_url: imageUrl.value || undefined
     })
@@ -111,6 +140,7 @@ async function submit() {
 .upload-text { font-size: 28rpx; color: #6b7280; }
 .preview-wrap { border-radius: 16rpx; overflow: hidden; background: #f5f5f5; }
 .preview-img { width: 100%; height: 320rpx; display: block; }
+.picker-value { padding: 24rpx; border: 1rpx solid #e5e7eb; border-radius: 12rpx; font-size: 30rpx; color: #333; }
 .preview-remove { margin-top: 16rpx; font-size: 28rpx; color: #1989fa; text-align: center; }
 .btn { margin-top: 24rpx; padding: 28rpx; border-radius: 12rpx; font-size: 30rpx; width: 100%; }
 .primary { background: #07c160; color: #fff; border: none; }

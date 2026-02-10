@@ -1,7 +1,10 @@
 import request from './request.js'
 
-export function listSubjects() {
-  return request.get('/subjects')
+/** @param {{ course?: string }} params - course 按科目筛选，不传则全部 */
+export function listSubjects(params = {}) {
+  const course = params.course
+  const url = course ? '/subjects?course=' + encodeURIComponent(course) : '/subjects'
+  return request.get(url)
 }
 
 export function getSubject(id) {
