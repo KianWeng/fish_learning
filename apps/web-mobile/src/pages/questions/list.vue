@@ -165,7 +165,20 @@ async function exportPdf(s) {
     })
   } catch (e) {
     uni.hideLoading()
-    uni.showToast({ title: e.message || '导出失败', icon: 'none' })
+    const msg = e.message || '导出失败'
+    if (msg.includes('积分不足')) {
+      uni.showModal({
+        title: '积分不足',
+        content: msg + '。可在「我的」页观看激励视频获取积分。',
+        cancelText: '观看广告',
+        confirmText: '确定',
+        success: (res) => {
+          if (res.cancel) uni.navigateTo({ url: '/pages/my/index' })
+        }
+      })
+    } else {
+      uni.showToast({ title: msg, icon: 'none' })
+    }
   }
 }
 

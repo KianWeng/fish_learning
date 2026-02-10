@@ -13,6 +13,17 @@
       </view>
     </view>
 
+    <view class="points-card" v-if="isLoggedIn">
+      <view class="points-row">
+        <text class="points-label">当前积分</text>
+        <text class="points-value">{{ points }}</text>
+        <button class="btn-ad" :disabled="adLoading" @click="onWatchAd">观看广告 +{{ pointsPerAd }} 积分</button>
+      </view>
+      <view class="points-actions">
+        <text class="points-link" @click="goStorageExpand">积分兑换扩容</text>
+      </view>
+    </view>
+
     <view class="menu">
       <view class="menu-item" @click="goStats">
         <image class="menu-icon-img" :src="menuIconUri('stats')" mode="aspectFit" />
@@ -58,10 +69,14 @@ import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import CachedImage from '@/components/CachedImage.vue'
 import request from '@/api/request.js'
-import { API_BASE_URL } from '@/config.js'
+import { API_BASE_URL, AD_REWARD_UNIT_ID } from '@/config.js'
 
 const userInfo = ref({ nickname: '', desc: '', avatar_url: '' })
 const token = ref('')
+const points = ref(0)
+const pointsPerAd = 10
+const adLoading = ref(false)
+let rewardedVideoAd = null
 
 /** 云端存储（字节）：登录后从 GET /auth/storage 拉取，默认 100MB */
 const storageCloudUsedBytes = ref(0)
@@ -123,6 +138,28 @@ watch(displayAvatarUrl, (v) => {
 }, { immediate: true })
 
 onMounted(() => {
+  // #ifdef MP-WEIXIN
+  if (AD_REWARD_UNIT_ID) {
+    try {
+      rewardedVideoAd = uni.createRewardedVideoAd({ adUnitId: AD_REWARD_UNIT_ID })
+      rewardedVideoAd.onClose((res) => {
+        if (res && res.isEnded) {
+          request.post('/auth/points/ad-reward').then(() => {
+            uni.showToast({ title: `+${pointsPerAd} 积分`, icon: 'success' })
+            fetchCloudStorage()
+          }).catch((e) => {
+            uni.showToast({ title: e.message || '领取失败', icon: 'none' })
+          })
+        }
+      })
+      rewardedVideoAd.onError(() => {
+        uni.showToast({ title: '广告加载失败', icon: 'none' })
+      })
+    } catch (e) {
+      console.warn('createRewardedVideoAd not available', e)
+    }
+  }
+  // #endif
   try {
     token.value = uni.getStorageSync('token') || ''
     const u = uni.getStorageSync('user')
@@ -173,6 +210,7 @@ async function fetchCloudStorage() {
     const res = await request.get('/auth/storage')
     storageCloudUsedBytes.value = res.used_bytes ?? 0
     storageCloudLimitBytes.value = res.limit_bytes ?? 0
+    points.value = res.points ?? 0
     console.log('[我的页] 云端存储 /auth/storage:', {
       limit_bytes: res.limit_bytes,
       used_bytes: res.used_bytes,
@@ -237,6 +275,28 @@ function goStorageExpand() {
   uni.navigateTo({ url: '/pages/my/storage-expand' })
 }
 
+function onWatchAd() {
+  // #ifdef MP-WEIXIN
+  if (!AD_REWARD_UNIT_ID) {
+    uni.showToast({ title: '暂未配置广告位', icon: 'none' })
+    return
+  }
+  if (!rewardedVideoAd) {
+    uni.showToast({ title: '广告未就绪', icon: 'none' })
+    return
+  }
+  adLoading.value = true
+  rewardedVideoAd.show().catch(() => {
+    rewardedVideoAd.load().then(() => rewardedVideoAd.show()).catch(() => {
+      uni.showToast({ title: '广告加载失败，请稍后再试', icon: 'none' })
+    })
+  }).finally(() => { adLoading.value = false })
+  // #endif
+  // #ifndef MP-WEIXIN
+  uni.showToast({ title: '仅支持在微信小程序中观看', icon: 'none' })
+  // #endif
+}
+
 const MENU_ICON_COLOR = '#4A90E2'
 const menuLineIcons = {
   stats: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
@@ -284,6 +344,28 @@ function menuIconUri(name) {
 }
 .btn-auth::after { border: none; }
 .btn-auth.secondary { background: transparent; color: var(--text-hint); border: 1rpx solid #ddd; }
+.points-card {
+  background: var(--bg-card);
+  border-radius: 24rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 32rpx;
+  box-shadow: var(--shadow-card);
+}
+.points-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16rpx; }
+.points-label { font-size: 28rpx; color: var(--text-secondary); }
+.points-value { font-size: 40rpx; font-weight: 600; color: var(--primary); }
+.btn-ad {
+  margin-left: auto;
+  padding: 16rpx 24rpx;
+  font-size: 26rpx;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 16rpx;
+}
+.btn-ad::after { border: none; }
+.points-actions { margin-top: 16rpx; }
+.points-link { font-size: 26rpx; color: var(--primary); }
 .menu {
   background: var(--bg-card);
   border-radius: 24rpx;
