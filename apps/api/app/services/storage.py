@@ -4,6 +4,7 @@ storage_key 由用户微信 openid 安全化得到，URL 形如 /files/<subdir>/
 兼容旧 URL：/files/<subdir>/<filename> 及 /files/<subdir>/<user_id>/<filename>（数字 user_id）。
 """
 import hashlib
+import re
 import uuid
 from io import BytesIO
 from pathlib import Path
@@ -93,8 +94,35 @@ def save_upload_file(
     return f"/files/{subdir}/{storage_key}/{name}", len(file_content)
 
 
+def _sanitize_pdf_base_name(name: str) -> str:
+    """将错题本名等整理为可做文件名的前缀：保留中文、字母数字、横线、下划线，最多 50 字符。"""
+    s = re.sub(r"[^\w\u4e00-\u9fff\-]", "_", (name or "错题本").strip()[:50])
+    return s.strip("_") or "错题本"
+
+
+def save_export_pdf(file_content: bytes, display_base_name: str, storage_key: str) -> tuple[str, int]:
+    """保存导出的 PDF，文件名形如「错题本-数学_abc12def.pdf」，便于在管理页显示实际名字。"""
+    base = _user_base(storage_key) / SUBDIR_PDFS
+    base.mkdir(parents=True, exist_ok=True)
+    safe_base = _sanitize_pdf_base_name(display_base_name)
+    short_id = uuid.uuid4().hex[:8]
+    name = f"{safe_base}_{short_id}.pdf"
+    (base / name).write_bytes(file_content)
+    return f"/files/{SUBDIR_PDFS}/{storage_key}/{name}", len(file_content)
+
+
+def _pdf_display_name(filename: str) -> str:
+    """从存储文件名得到展示名：错题本-数学_abc12def.pdf -> 错题本-数学.pdf；uuid.pdf 保持原名。"""
+    if not filename.lower().endswith(".pdf"):
+        return filename
+    m = re.match(r"^(.+)_[0-9a-f]{8}\.pdf$", filename, re.IGNORECASE)
+    if m:
+        return m.group(1) + ".pdf"
+    return filename
+
+
 def list_user_pdfs(storage_key: str) -> list[dict]:
-    """列出用户 uploads/<storage_key>/pdfs/ 下所有 PDF，返回 [{url, filename, size}, ...]。"""
+    """列出用户 uploads/<storage_key>/pdfs/ 下所有 PDF，返回 [{url, filename, size, display_name}, ...]。"""
     if not _safe_storage_key(storage_key):
         return []
     base = _user_base(storage_key) / SUBDIR_PDFS
@@ -112,7 +140,12 @@ def list_user_pdfs(storage_key: str) -> list[dict]:
         except OSError:
             size = 0
         url = f"/files/{SUBDIR_PDFS}/{storage_key}/{name}"
-        result.append({"url": url, "filename": name, "size": size})
+        result.append({
+            "url": url,
+            "filename": name,
+            "size": size,
+            "display_name": _pdf_display_name(name),
+        })
     result.sort(key=lambda x: x["filename"])
     return result
 

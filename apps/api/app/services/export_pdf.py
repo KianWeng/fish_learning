@@ -11,7 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, KeepTogether
 
-from app.services.storage import get_file_path, save_upload_file, SUBDIR_PDFS
+from app.services.storage import get_file_path, save_export_pdf, SUBDIR_PDFS
 
 # 图片在页内最大尺寸，控制单图占比以利一页多题
 IMG_MAX_WIDTH = 160 * mm
@@ -152,11 +152,11 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
 def export_subject_to_pdf_file(
     subject_name: str, questions: list[dict], out_filename: str | None, storage_key: str
 ) -> tuple[str, int]:
-    """生成 PDF 并保存到 uploads/<storage_key>/pdfs/，返回 (访问路径, 字节数)。storage_key 由 user_storage_key(openid) 得到。"""
+    """生成 PDF 并保存到 uploads/<storage_key>/pdfs/，文件名带错题本名（如 错题本-数学_abc12def.pdf），返回 (访问路径, 字节数)。"""
     pdf_bytes = build_subject_pdf(subject_name, questions, None)
-    safe_name = re.sub(r"[^\w\u4e00-\u9fff\-]", "_", (subject_name or "错题本")[:50])
-    filename = (out_filename or f"{safe_name}.pdf").encode("utf-8", errors="ignore").decode("utf-8")
-    if not filename.endswith(".pdf"):
-        filename += ".pdf"
-    path, size = save_upload_file(pdf_bytes, filename, SUBDIR_PDFS, storage_key)
+    # 展示用前缀：用于 save_export_pdf 生成「错题本-数学_8位hex.pdf」
+    display_base = (Path(out_filename or "").stem if out_filename else None) or re.sub(
+        r"[^\w\u4e00-\u9fff\-]", "_", (subject_name or "错题本")[:50]
+    )
+    path, size = save_export_pdf(pdf_bytes, display_base, storage_key)
     return path, size
