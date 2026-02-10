@@ -12,6 +12,10 @@
         <text class="label">题目</text>
         <textarea class="textarea" v-model="form.content" placeholder="题目内容" />
       </view>
+      <view class="field summary-field" v-if="form.summary">
+        <text class="label">知识点·易错点</text>
+        <text class="summary-text">{{ form.summary }}</text>
+      </view>
       <view class="field">
         <text class="label">解析</text>
         <textarea class="textarea" v-model="form.analysis" placeholder="解析" />
@@ -55,7 +59,7 @@ import { uploadAndAnalyzeImage, createQuestion } from '@/api/questions.js'
 import { setSourcePath, getResultPath, clear } from '@/utils/crop-store.js'
 
 const result = ref(null)
-const form = ref({ content: '', analysis: '', answer: '', image_url: '', subject_id: 0, chapter_id: null })
+const form = ref({ content: '', analysis: '', answer: '', image_url: '', summary: '', subject_id: 0, chapter_id: null })
 const subjectId = ref(0)
 const subjectName = ref('')
 const chapterId = ref(null)
@@ -155,6 +159,7 @@ async function useCroppedImage(croppedPath) {
     form.value.analysis = data.analysis || ''
     form.value.answer = data.answer || ''
     form.value.image_url = data.url || ''
+    form.value.summary = data.summary || ''
   } catch (e) {
     uni.hideLoading()
     uni.showToast({ title: e.message || '上传或识别失败', icon: 'none' })
@@ -166,7 +171,7 @@ async function useCroppedImage(croppedPath) {
 function reset() {
   result.value = null
   croppedImagePath.value = ''
-  form.value = { content: '', analysis: '', answer: '', image_url: '', subject_id: 0, chapter_id: null }
+  form.value = { content: '', analysis: '', answer: '', image_url: '', summary: '', subject_id: 0, chapter_id: null }
   subjectId.value = 0
   subjectName.value = ''
   chapterId.value = null
@@ -217,6 +222,7 @@ async function submit() {
       analysis: form.value.analysis || undefined,
       answer: form.value.answer || undefined,
       image_url: form.value.image_url || undefined,
+      summary: form.value.summary || undefined,
       source: 'photo'
     })
     uni.showToast({ title: '已保存' })
@@ -272,4 +278,6 @@ onMounted(async () => {
 .textarea { width: 100%; min-height: 160rpx; padding: 20rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 28rpx; box-sizing: border-box; }
 .input { padding: 24rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 30rpx; width: 100%; box-sizing: border-box; }
 .picker { padding: 24rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 30rpx; }
+.summary-field { background: linear-gradient(135deg, #e8f5e9 0%, #fff8e1 100%); border-radius: 12rpx; padding: 24rpx; border: 1rpx solid #c8e6c9; }
+.summary-text { font-size: 28rpx; color: #2e7d32; white-space: pre-wrap; word-break: break-all; }
 </style>

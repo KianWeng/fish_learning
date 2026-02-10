@@ -51,8 +51,9 @@ function onChooseAvatar(e) {
 async function uploadAvatar() {
   if (!avatarTempPath) return null
   return new Promise((resolve, reject) => {
+    // 使用免鉴权接口，登录前无 token，/upload/image 会 401
     uni.uploadFile({
-      url: API_BASE_URL + '/upload/image',
+      url: API_BASE_URL + '/upload/avatar-login',
       filePath: avatarTempPath,
       name: 'file',
       header: {},

@@ -21,16 +21,21 @@ export function createQuestion(data) {
   return request.post('/questions', data)
 }
 
-/** 仅上传图片，不分析。用于手动输入 + 上传照片 创建错题本 */
+/** 仅上传图片，不分析。用于手动输入/解析附图等，需登录态 */
 export function uploadImage(filePath) {
   return new Promise((resolve, reject) => {
     const url = API_BASE_URL + '/upload/image'
+    const header = {}
+    try {
+      const token = uni.getStorageSync('token')
+      if (token) header['Authorization'] = 'Bearer ' + token
+    } catch (e) {}
     if (url.startsWith('http') && typeof uni !== 'undefined') {
       uni.uploadFile({
         url,
         filePath,
         name: 'file',
-        header: {},
+        header,
         success: (res) => {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
@@ -54,12 +59,17 @@ export function uploadImage(filePath) {
 export function uploadAndAnalyzeImage(filePath) {
   return new Promise((resolve, reject) => {
     const url = API_BASE_URL + '/upload/image/analyze'
+    const header = {}
+    try {
+      const token = uni.getStorageSync('token')
+      if (token) header['Authorization'] = 'Bearer ' + token
+    } catch (e) {}
     if (url.startsWith('http') && typeof uni !== 'undefined') {
       uni.uploadFile({
         url,
         filePath,
         name: 'file',
-        header: {},
+        header,
         success: (res) => {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {

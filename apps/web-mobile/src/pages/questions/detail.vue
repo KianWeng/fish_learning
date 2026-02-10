@@ -15,13 +15,25 @@
       <text class="label">题目</text>
       <text class="content">{{ q.content }}</text>
     </view>
-    <view class="card" v-if="q.analysis">
-      <text class="label">解析</text>
-      <text class="content">{{ q.analysis }}</text>
+    <view class="card summary-card" v-if="q.summary">
+      <text class="label summary-label">知识点·易错点</text>
+      <text class="summary-content">{{ q.summary }}</text>
     </view>
-    <view class="card" v-if="q.answer">
+    <view class="card">
+      <text class="label">解析</text>
+      <textarea class="content-edit" v-model="analysisEdit" placeholder="可手动修改 AI 解析，或上传解析图片" />
+      <view class="analysis-image-wrap" v-if="analysisImageFullUrl">
+        <CachedImage img-class="analysis-img" :src="analysisImageFullUrl" mode="widthFix" @click="openAnalysisImagePreview" />
+        <text class="img-hint">解析附图，点击放大</text>
+      </view>
+      <button class="btn-upload" size="mini" @click="uploadAnalysisImage">上传解析图</button>
+    </view>
+    <view class="card">
       <text class="label">答案</text>
-      <text class="content">{{ q.answer }}</text>
+      <textarea class="answer-input" v-model="answerEdit" placeholder="可手动修改答案" />
+      <view class="save-actions">
+        <button class="btn-save" size="mini" @click="saveAnalysisAndAnswer">保存解析与答案</button>
+      </view>
     </view>
     <view class="card notes-card">
       <text class="label">自我剖析</text>
@@ -30,10 +42,9 @@
         v-model="userNotes"
         placeholder="记录你的错因、思路或复习笔记…"
         :maxlength="2000"
-        @blur="saveUserNotes"
       />
       <view class="notes-actions">
-        <button class="btn-save" size="mini" @click="saveUserNotes(true)">保存笔记</button>
+        <button class="btn-save" size="mini" @click="saveUserNotes">保存笔记</button>
       </view>
     </view>
     <view class="meta">创建于 {{ q.created_at }}</view>
@@ -69,7 +80,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { getQuestion, updateQuestion } from '@/api/questions.js'
+import { getQuestion, updateQuestion, uploadImage } from '@/api/questions.js'
 import CachedImage from '@/components/CachedImage.vue'
 import { API_BASE_URL } from '@/config.js'
 
@@ -77,6 +88,9 @@ const q = ref(null)
 const loading = ref(true)
 const imageFullUrl = ref('')
 const showDebug = ref(false)
+const analysisEdit = ref('')
+const answerEdit = ref('')
+const analysisImageFullUrl = ref('')
 
 /** 加载失败时显示的具体原因，便于排查 */
 const loadFailReason = ref('')
@@ -95,7 +109,6 @@ const previewInnerStyle = computed(() => ({
 }))
 
 const userNotes = ref('')
-let saveNotesTimer = null
 watch(() => q.value?.image_url, (url) => {
   if (!url || typeof url !== 'string') {
     imageFullUrl.value = ''
@@ -111,6 +124,20 @@ watch(() => q.value?.image_url, (url) => {
 
 watch(() => q.value?.user_notes, (val) => {
   userNotes.value = val ?? ''
+}, { immediate: true })
+
+watch(() => q.value?.analysis, (val) => {
+  analysisEdit.value = val ?? ''
+}, { immediate: true })
+
+watch(() => q.value?.answer, (val) => {
+  answerEdit.value = val ?? ''
+}, { immediate: true })
+
+watch(() => q.value?.analysis_image_url, (url) => {
+  if (!url) { analysisImageFullUrl.value = ''; return }
+  const base = (API_BASE_URL || '').replace(/\/$/, '')
+  analysisImageFullUrl.value = url.startsWith('http') ? url : `${base}${url.startsWith('/') ? url : '/' + url}`
 }, { immediate: true })
 
 function getTouches(e) {
@@ -181,26 +208,62 @@ function zoomOut() {
   imagePreviewScale.value = Math.max(MIN_SCALE, imagePreviewScale.value - SCALE_STEP)
 }
 
-async function saveUserNotes(immediate = false) {
+async function saveAnalysisAndAnswer() {
   if (!q.value?.id) return
-  const doSave = async () => {
-    const notes = (userNotes.value || '').trim()
-    try {
-      const updated = await updateQuestion(q.value.id, { user_notes: notes || null })
-      if (updated && updated.user_notes !== undefined) q.value.user_notes = updated.user_notes
-      uni.showToast({ title: '已保存', icon: 'success' })
-    } catch (e) {
-      uni.showToast({ title: e.message || '保存失败', icon: 'none' })
+  try {
+    const updated = await updateQuestion(q.value.id, {
+      analysis: analysisEdit.value || null,
+      answer: answerEdit.value || null
+    })
+    if (updated) {
+      if (updated.analysis !== undefined) q.value.analysis = updated.analysis
+      if (updated.answer !== undefined) q.value.answer = updated.answer
     }
+    uni.showToast({ title: '已保存', icon: 'success' })
+  } catch (e) {
+    uni.showToast({ title: e.message || '保存失败', icon: 'none' })
   }
-  if (immediate) {
-    if (saveNotesTimer) clearTimeout(saveNotesTimer)
-    saveNotesTimer = null
-    await doSave()
-    return
+}
+
+async function uploadAnalysisImage() {
+  if (!q.value?.id) return
+  uni.chooseImage({
+    count: 1,
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      const path = res.tempFilePaths[0]
+      uni.showLoading({ title: '上传中…' })
+      try {
+        const data = await uploadImage(path)
+        const url = data.url
+        if (!url) throw new Error('未返回图片地址')
+        const updated = await updateQuestion(q.value.id, { analysis_image_url: url })
+        if (updated && updated.analysis_image_url !== undefined) q.value.analysis_image_url = updated.analysis_image_url
+        uni.hideLoading()
+        uni.showToast({ title: '解析图已上传', icon: 'success' })
+      } catch (e) {
+        uni.hideLoading()
+        uni.showToast({ title: e.message || '上传失败', icon: 'none' })
+      }
+    }
+  })
+}
+
+function openAnalysisImagePreview() {
+  if (!analysisImageFullUrl.value) return
+  uni.previewImage({ urls: [analysisImageFullUrl.value] })
+}
+
+async function saveUserNotes() {
+  if (!q.value?.id) return
+  const notes = (userNotes.value || '').trim()
+  try {
+    const updated = await updateQuestion(q.value.id, { user_notes: notes || null })
+    if (updated && updated.user_notes !== undefined) q.value.user_notes = updated.user_notes
+    uni.showToast({ title: '已保存', icon: 'success' })
+  } catch (e) {
+    uni.showToast({ title: e.message || '保存失败', icon: 'none' })
   }
-  if (saveNotesTimer) clearTimeout(saveNotesTimer)
-  saveNotesTimer = setTimeout(doSave, 300)
 }
 
 function onImageError(e) {
@@ -241,6 +304,17 @@ onMounted(async () => {
 .card { background: var(--bg-card); border-radius: 24rpx; padding: 28rpx; margin-bottom: 32rpx; box-shadow: var(--shadow-card); }
 .label { display: block; font-size: 26rpx; color: var(--text-hint); margin-bottom: 12rpx; }
 .content { font-size: 30rpx; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+.summary-card { background: linear-gradient(135deg, #e8f5e9 0%, #fff8e1 100%); border-left: 6rpx solid #2e7d32; }
+.summary-label { color: #1b5e20; font-weight: 600; }
+.summary-content { font-size: 28rpx; color: #2e7d32; white-space: pre-wrap; word-break: break-all; }
+.content-edit { width: 100%; min-height: 160rpx; font-size: 30rpx; color: var(--text); padding: 16rpx; box-sizing: border-box; border: 1rpx solid #eee; border-radius: 12rpx; white-space: pre-wrap; word-break: break-all; }
+.answer-input { width: 100%; min-height: 120rpx; font-size: 30rpx; color: var(--text); padding: 16rpx; box-sizing: border-box; border: 1rpx solid #eee; border-radius: 12rpx; white-space: pre-wrap; word-break: break-all; }
+.analysis-image-wrap { margin-top: 20rpx; }
+.analysis-img { width: 100%; border-radius: 12rpx; display: block; }
+.img-hint { font-size: 24rpx; color: var(--text-hint); display: block; margin-top: 8rpx; }
+.btn-upload { margin-top: 16rpx; background: var(--primary); color: #fff; }
+.save-actions { margin-top: 20rpx; }
+.save-actions .btn-save { background: var(--primary); color: #fff; }
 .img-card { position: relative; }
 .img { width: 100%; border-radius: 12rpx; }
 .img-tap-hint { position: absolute; right: 28rpx; bottom: 16rpx; font-size: 22rpx; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.4); padding: 8rpx 16rpx; border-radius: 8rpx; }

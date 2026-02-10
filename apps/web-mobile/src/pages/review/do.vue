@@ -7,6 +7,10 @@
         <button class="btn" @click="showAnswer = true">查看解析与答案</button>
       </view>
       <template v-else>
+        <view class="summary-block" v-if="current.summary">
+          <text class="label">知识点·易错点</text>
+          <text class="summary-text">{{ current.summary }}</text>
+        </view>
         <view class="analysis" v-if="current.analysis">
           <text class="label">解析</text>
           <text class="text">{{ current.analysis }}</text>
@@ -87,6 +91,8 @@ async function submit(rating) {
 .btn.forget { background: #ffebe9; color: #ee0a24; border: none; }
 .btn.vague { background: #fff7e6; color: var(--warn); border: none; }
 .btn.remember { background: var(--primary-bg); color: var(--success); border: none; }
+.summary-block { margin-top: 24rpx; padding: 20rpx; background: linear-gradient(135deg, #e8f5e9 0%, #fff8e1 100%); border-radius: 12rpx; border-left: 6rpx solid #2e7d32; }
+.summary-text { font-size: 28rpx; color: #2e7d32; white-space: pre-wrap; }
 .analysis, .answer, .rating { margin-top: 24rpx; }
 .label { display: block; font-size: 26rpx; color: var(--text-hint); margin-bottom: 8rpx; }
 .text { font-size: 28rpx; color: var(--text); white-space: pre-wrap; }
