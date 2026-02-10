@@ -1,6 +1,7 @@
 import secrets
 import time
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 import httpx
 import jwt
@@ -19,6 +20,12 @@ from app.schemas.auth import (
     StorageRedeemIn,
 )
 from app.services.storage_quota import get_effective_storage_limit
+from app.services.storage import (
+    get_file_path,
+    delete_file_by_url,
+    save_avatar,
+    user_storage_key,
+)
 from app.services.wechat_pay import create_jsapi_order, build_miniprogram_payment_params
 from app.models import StorageOrder, PointsAdLog
 from sqlalchemy import func
@@ -93,7 +100,30 @@ async def wechat_login(body: WechatLoginIn, db: AsyncSession = Depends(get_db)):
     if body.nickname is not None:
         user.nickname = body.nickname or None
     if body.avatar_url is not None:
-        user.avatar_url = body.avatar_url or None
+        avatar_url = (body.avatar_url or "").strip()
+        # 若为登录临时目录 /files/avatars/login/xxx，迁移到用户个人目录
+        path_from_url = urlparse(avatar_url).path if avatar_url.startswith("http") else avatar_url
+        if "/files/avatars/login/" in path_from_url:
+            local_path = get_file_path(path_from_url)
+            if local_path and local_path.is_file():
+                try:
+                    content = local_path.read_bytes()
+                    storage_key = user_storage_key(user.openid)
+                    limit = await get_effective_storage_limit(db, user.id)
+                    new_path, size = save_avatar(content, "avatar.jpg", storage_key)
+                    if (user.storage_used_bytes or 0) + size <= limit:
+                        user.avatar_url = new_path
+                        user.storage_used_bytes = (user.storage_used_bytes or 0) + size
+                        delete_file_by_url(path_from_url)
+                    else:
+                        user.avatar_url = avatar_url
+                except Exception as e:
+                    print(f"[auth/wechat/login] 迁移登录头像到用户目录失败: {e}")
+                    user.avatar_url = avatar_url
+            else:
+                user.avatar_url = avatar_url
+        else:
+            user.avatar_url = avatar_url or None
     await db.flush()
     await db.refresh(user)
     print(f"[auth/wechat/login] 用户 id={user.id} 保存后 avatar_url={user.avatar_url!r}")

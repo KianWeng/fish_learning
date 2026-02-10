@@ -9,6 +9,7 @@ from fastapi import Depends
 from app.services.storage import (
     save_upload_file,
     save_avatar,
+    save_avatar_login,
     save_question_image,
     delete_file_by_url,
     user_storage_key,
@@ -24,6 +25,25 @@ from app.models import Question, ImportBatch, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+# 单次上传最大 2MB，用于登录头像等未鉴权上传
+MAX_AVATAR_LOGIN_BYTES = 2 * 1024 * 1024
+
+
+@router.post("/avatar-login")
+async def upload_avatar_login(file: UploadFile = File(...)):
+    """登录页上传头像（免鉴权）。保存到 uploads/login/avatars/，返回 /files/avatars/login/xxx。限制 2MB、仅图片。"""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="空文件")
+    if len(content) > MAX_AVATAR_LOGIN_BYTES:
+        raise HTTPException(status_code=400, detail="图片不能超过 2MB")
+    ct = (file.content_type or "").lower()
+    if not ct.startswith("image/"):
+        raise HTTPException(status_code=400, detail="仅支持图片")
+    path, _ = save_avatar_login(content, file.filename or "avatar.jpg")
+    return {"url": path}
 
 
 @router.post("/image")

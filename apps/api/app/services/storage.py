@@ -69,6 +69,16 @@ def save_avatar(file_content: bytes, filename: str, storage_key: str) -> tuple[s
     return f"/files/{SUBDIR_AVATARS}/{storage_key}/{name}", len(compressed)
 
 
+def save_avatar_login(file_content: bytes, filename: str) -> tuple[str, int]:
+    """登录前上传头像：保存到 uploads/login/avatars/，无需用户身份。返回 (访问路径, 写入字节数)。"""
+    compressed = _compress_image(file_content, max_width=400, max_height=400, quality=85)
+    base = Path(settings.storage_local_path) / "login" / SUBDIR_AVATARS
+    base.mkdir(parents=True, exist_ok=True)
+    name = f"{uuid.uuid4().hex}.jpg"
+    (base / name).write_bytes(compressed)
+    return f"/files/{SUBDIR_AVATARS}/login/{name}", len(compressed)
+
+
 def save_question_image(file_content: bytes, filename: str, storage_key: str) -> tuple[str, int]:
     """保存拍题图片到 uploads/<storage_key>/questions/，返回 (访问路径, 写入字节数)。"""
     compressed = _compress_image(file_content, max_width=1200, max_height=1600, quality=88)
