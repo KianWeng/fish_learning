@@ -15,12 +15,17 @@
 
     <view class="points-card" v-if="isLoggedIn">
       <view class="points-row">
-        <text class="points-label">当前积分</text>
-        <text class="points-value">{{ points }}</text>
-        <button class="btn-ad" :disabled="adLoading" @click="onWatchAd">观看广告 +{{ pointsPerAd }} 积分</button>
+        <view class="points-left">
+          <text class="points-label">当前积分</text>
+          <text class="points-value">{{ points }}</text>
+        </view>
+        <view class="points-ad-wrap">
+          <button class="btn-ad" :disabled="adLoading" @click="onWatchAd">观看广告 +{{ pointsPerAd }} 积分</button>
+          <text class="btn-ad-hint">点击观看激励视频获取积分</text>
+        </view>
       </view>
       <view class="points-actions">
-        <text class="points-link" @click="goStorageExpand">积分兑换扩容</text>
+        <text class="points-link" @click="showPointsHelp">积分使用说明</text>
       </view>
     </view>
 
@@ -275,6 +280,31 @@ function goStorageExpand() {
   uni.navigateTo({ url: '/pages/my/storage-expand' })
 }
 
+const POINTS_HELP_CONTENT = `【积分获取】
+· 观看激励视频：每次 +10 积分，可在本页点击「观看广告」获取。
+
+【积分使用】
+· 兑换存储扩容包：在「存储扩容」页用积分兑换 50MB/100MB/200MB 容量，有效期 1 年。
+· 导出错题集 PDF：每次消耗 100 积分。
+· 导出学习报告 PDF：每次消耗 100 积分。`
+
+function showPointsHelp() {
+  if (!isLoggedIn.value) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    goLogin()
+    return
+  }
+  uni.showModal({
+    title: '积分说明',
+    content: POINTS_HELP_CONTENT,
+    confirmText: '去兑换',
+    cancelText: '知道了',
+    success: (res) => {
+      if (res.confirm) goStorageExpand()
+    }
+  })
+}
+
 function onWatchAd() {
   // #ifdef MP-WEIXIN
   if (!AD_REWARD_UNIT_ID) {
@@ -351,11 +381,12 @@ function menuIconUri(name) {
   margin-bottom: 32rpx;
   box-shadow: var(--shadow-card);
 }
-.points-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16rpx; }
+.points-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24rpx; }
+.points-left { display: flex; align-items: baseline; gap: 12rpx; flex-shrink: 0; }
 .points-label { font-size: 28rpx; color: var(--text-secondary); }
 .points-value { font-size: 40rpx; font-weight: 600; color: var(--primary); }
+.points-ad-wrap { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
 .btn-ad {
-  margin-left: auto;
   padding: 16rpx 24rpx;
   font-size: 26rpx;
   background: var(--primary);
@@ -364,6 +395,7 @@ function menuIconUri(name) {
   border-radius: 16rpx;
 }
 .btn-ad::after { border: none; }
+.btn-ad-hint { font-size: 22rpx; color: var(--text-hint); margin-top: 8rpx; }
 .points-actions { margin-top: 16rpx; }
 .points-link { font-size: 26rpx; color: var(--primary); }
 .menu {

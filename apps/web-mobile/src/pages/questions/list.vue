@@ -66,6 +66,7 @@ import { listQuestions } from '@/api/questions.js'
 import { uploadImage } from '@/api/questions.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 import { COMMON_COURSES } from '@/utils/course.js'
+import { useRewardedAd } from '@/composables/useRewardedAd.js'
 
 const list = ref([])
 const loading = ref(true)
@@ -76,6 +77,7 @@ const courseFilterOptions = ref([
   ...COMMON_COURSES.map((c) => ({ label: c, value: c }))
 ])
 const courseFilterIndex = ref(0)
+const { showAd } = useRewardedAd()
 
 function onCourseFilterChange(e) {
   const idx = Number(e.detail.value)
@@ -176,11 +178,11 @@ async function exportPdf(s) {
     if (msg.includes('积分不足')) {
       uni.showModal({
         title: '积分不足',
-        content: msg + '。可在「我的」页观看激励视频获取积分。',
+        content: msg + '。点击「观看广告」可直接观看激励视频获取积分。',
         cancelText: '观看广告',
         confirmText: '确定',
         success: (res) => {
-          if (res.cancel) uni.navigateTo({ url: '/pages/my/index' })
+          if (res.cancel) showAd()
         }
       })
     } else {

@@ -34,6 +34,7 @@ import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { API_BASE_URL } from '@/config.js'
 import { getSubjectReport, exportReportPdf } from '@/api/subjects.js'
+import { useRewardedAd } from '@/composables/useRewardedAd.js'
 import KnowledgeTree from './KnowledgeTree.vue'
 
 const subjectId = ref(0)
@@ -42,6 +43,7 @@ const report = ref('')
 const knowledgeMap = ref({ label: '', children: [] })
 const loading = ref(true)
 const exporting = ref(false)
+const { showAd } = useRewardedAd()
 
 const hasTree = computed(() => {
   const m = knowledgeMap.value
@@ -116,11 +118,11 @@ async function onExportPdf() {
     if (msg.includes('积分不足')) {
       uni.showModal({
         title: '积分不足',
-        content: msg + '。可在「我的」页观看激励视频获取积分。',
+        content: msg + '。点击「观看广告」可直接观看激励视频获取积分。',
         cancelText: '观看广告',
         confirmText: '确定',
         success: (res) => {
-          if (res.cancel) uni.navigateTo({ url: '/pages/my/index' })
+          if (res.cancel) showAd()
         }
       })
     } else {
