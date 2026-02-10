@@ -11,3 +11,7 @@ const DEFAULT_API_BASE_URL = 'http://192.168.3.22:8000'
 
 export const API_BASE_URL =
   typeof __VITE_API_BASE_URL__ !== 'undefined' ? __VITE_API_BASE_URL__ : DEFAULT_API_BASE_URL
+
+/** 微信小程序激励视频广告位 ID（流量主-广告位），未配置则页面不创建广告 */
+export const AD_REWARD_UNIT_ID =
+  typeof __VITE_AD_REWARD_UNIT_ID__ !== 'undefined' ? __VITE_AD_REWARD_UNIT_ID__ : ''

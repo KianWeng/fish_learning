@@ -66,6 +66,13 @@ npm install
 3. 在小程序后台「开发 - 开发管理 - 开发设置」中配置 **request 合法域名**：填写你的后端 API 域名（如 `https://your-api.com`），且必须 HTTPS
 4. 本地开发时可在开发者工具中勾选「不校验合法域名」
 
+5. **存储扩容（积分 + 激励视频广告）**  
+   个人小程序无法使用微信支付，本应用通过「观看激励视频得积分 → 积分兑换扩容包」实现扩容。  
+   - 在微信公众平台开通 **流量主**，创建 **激励式视频广告** 广告位，获得广告位 ID。  
+   - 在项目根目录 `.env` 中配置：`VITE_AD_REWARD_UNIT_ID=你的广告位ID`（如 `adunit-xxxx`），重新执行 `npm run dev:mp-weixin` 或 `npm run build:mp-weixin`。  
+   - 用户进入「我的 → 存储扩容」可看到当前积分、观看广告获积分、以及用积分兑换 50MB/100MB/200MB 扩容包（有效期 1 年）。  
+   - 后端通过 `points_per_ad_reward`、`max_ad_rewards_per_day` 控制每次奖励积分和每日观看上限（见 `apps/api/.env.example`）。
+
 ### H5 部署
 
 1. 将 `dist/build/h5` 部署到任意静态服务器（Nginx、OSS、Vercel 等）
