@@ -1,6 +1,16 @@
 import request from './request.js'
 import { API_BASE_URL } from '@/config.js'
 
+/** 列出当前用户所有 PDF，用于 PDF 管理。返回 [{ url, filename, size }, ...] */
+export function listPdfs() {
+  return request.get('/upload/pdfs')
+}
+
+/** 删除一个 PDF，filename 为列表项的 filename */
+export function deletePdf(filename) {
+  return request.delete(`/upload/pdfs/${encodeURIComponent(filename)}`)
+}
+
 /**
  * 上传 PDF 并导入错题。H5 传入 { file, subjectId, chapterId } 其中 file 为 File 对象；
  * 小程序/App 传入 { filePath, subjectId, chapterId }。

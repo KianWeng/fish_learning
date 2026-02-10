@@ -24,9 +24,9 @@
         <text class="menu-text">科目管理</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item" @click="goImportPdf">
+      <view class="menu-item" @click="goPdfManage">
         <text class="menu-icon">📄</text>
-        <text class="menu-text">导入 PDF</text>
+        <text class="menu-text">PDF 管理</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
@@ -217,8 +217,8 @@ function goSubjects() {
   uni.navigateTo({ url: '/pages/subjects/list' })
 }
 
-function goImportPdf() {
-  uni.navigateTo({ url: '/pages/import/pdf' })
+function goPdfManage() {
+  uni.navigateTo({ url: '/pages/import/pdf-manage' })
 }
 </script>
 
