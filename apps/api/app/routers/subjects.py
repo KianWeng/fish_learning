@@ -12,6 +12,9 @@ from app.services.storage_quota import get_effective_storage_limit
 
 router = APIRouter()
 
+# 导出 PDF 每次消耗积分
+PDF_EXPORT_POINTS_COST = 100
+
 
 class ExportPdfResponse(BaseModel):
     url: str
@@ -89,7 +92,7 @@ async def export_subject_pdf(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """按错题本导出 PDF，包含该科目下全部题目的图片、题干、解析、答案、自我剖析。"""
+    """按错题本导出 PDF，包含该科目下全部题目的图片、题干、知识点·易错点、解析（含解析附图）、答案、自我剖析。"""
     r = await db.execute(select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id))
     s = r.scalar_one_or_none()
     if not s:
@@ -107,6 +110,8 @@ async def export_subject_pdf(
             "answer": x.answer,
             "user_notes": x.user_notes,
             "image_url": x.image_url,
+            "summary": getattr(x, "summary", None),
+            "analysis_image_url": getattr(x, "analysis_image_url", None),
             "created_at": x.created_at.isoformat() if x.created_at else "",
         }
         for x in rows
@@ -117,6 +122,11 @@ async def export_subject_pdf(
     u = r.scalar_one_or_none()
     if not u:
         raise HTTPException(status_code=401, detail="用户不存在")
+    if (u.points or 0) < PDF_EXPORT_POINTS_COST:
+        raise HTTPException(
+            status_code=402,
+            detail=f"积分不足，导出 PDF 需要 {PDF_EXPORT_POINTS_COST} 积分（当前 {u.points or 0} 积分）",
+        )
     storage_key = user_storage_key(u.openid)
     limit = await get_effective_storage_limit(db, user_id)
     safe_name = (s.name or "错题本").replace("/", "-").strip()[:50]
@@ -130,6 +140,7 @@ async def export_subject_pdf(
             detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {limit // (1024*1024)}MB），请先清理或扩容",
         )
     u.storage_used_bytes = (u.storage_used_bytes or 0) + size
+    u.points = (u.points or 0) - PDF_EXPORT_POINTS_COST
     await db.flush()
     return ExportPdfResponse(url=url, filename=filename)
 

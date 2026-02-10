@@ -1,5 +1,5 @@
 """
-按错题本（科目）导出 PDF：包含题目图片、题干、解析、答案、自我剖析。
+按错题本（科目）导出 PDF：包含题目图片、题干、知识点·易错点、解析（含解析附图）、答案、自我剖析。
 """
 import io
 import re
@@ -38,7 +38,7 @@ def _safe_text(s: str | None, max_len: int = 8000) -> str:
 def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path: Path | None) -> bytes:
     """
     生成错题本 PDF 的字节内容。
-    questions: 每项含 content, analysis, answer, user_notes, image_url, created_at 等。
+    questions: 每项含 content, analysis, answer, user_notes, image_url, summary, analysis_image_url, created_at 等。
     image_base_path: 用于解析 image_url 为本地路径时的基础路径（可为 None，则仅当 url 为 /files/questions/xxx 时用 get_file_path）。
     """
     buf = io.BytesIO()
@@ -128,10 +128,31 @@ def build_subject_pdf(subject_name: str, questions: list[dict], image_base_path:
             story.append(para("题目", label_style))
             story.append(para(content, body_style))
 
+        summary = _safe_text(q.get("summary"))
+        if summary:
+            story.append(para("知识点·易错点", label_style))
+            story.append(para(summary, body_style))
+
         analysis = _safe_text(q.get("analysis"))
         if analysis:
             story.append(para("解析", label_style))
             story.append(para(analysis, body_style))
+
+        analysis_image_url = (q.get("analysis_image_url") or "").strip()
+        if analysis_image_url and analysis_image_url.startswith("/files/"):
+            img_path = get_file_path(analysis_image_url)
+            if img_path and img_path.is_file():
+                try:
+                    from PIL import Image as PILImage
+                    with PILImage.open(img_path) as pil_img:
+                        iw, ih = pil_img.size
+                    if iw > 0 and ih > 0:
+                        scale = min(IMG_MAX_WIDTH / iw, IMG_MAX_HEIGHT / ih, 1.0)
+                        w, h = iw * scale, ih * scale
+                        img = RLImage(str(img_path), width=w, height=h)
+                        story.append(KeepTogether([img, Spacer(1, 2 * mm)]))
+                except Exception:
+                    pass
 
         answer = _safe_text(q.get("answer"))
         if answer:
