@@ -12,7 +12,7 @@
       <view v-else class="list">
         <view v-for="(item, i) in list" :key="item.filename" class="list-item">
           <view class="item-main">
-            <text class="item-name">PDF {{ i + 1 }}</text>
+            <text class="item-name">{{ item.display_name || item.filename || ('PDF ' + (i + 1)) }}</text>
             <text class="item-size">{{ formatSize(item.size) }}</text>
           </view>
           <view class="item-actions">
@@ -89,7 +89,7 @@ function download(item) {
         const u = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = u
-        a.download = item.filename || 'download.pdf'
+        a.download = item.display_name || item.filename || 'download.pdf'
         a.click()
         URL.revokeObjectURL(u)
         uni.showToast({ title: '已开始下载', icon: 'none' })

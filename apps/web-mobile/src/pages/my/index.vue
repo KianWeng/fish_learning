@@ -15,17 +15,17 @@
 
     <view class="menu">
       <view class="menu-item" @click="goStats">
-        <text class="menu-icon">📊</text>
+        <image class="menu-icon-img" :src="menuIconUri('stats')" mode="aspectFit" />
         <text class="menu-text">数据统计</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="goSubjects">
-        <text class="menu-icon">📁</text>
+        <image class="menu-icon-img" :src="menuIconUri('folder')" mode="aspectFit" />
         <text class="menu-text">科目管理</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="goPdfManage">
-        <text class="menu-icon">📄</text>
+        <image class="menu-icon-img" :src="menuIconUri('file')" mode="aspectFit" />
         <text class="menu-text">PDF 管理</text>
         <text class="menu-arrow">›</text>
       </view>
@@ -220,6 +220,17 @@ function goSubjects() {
 function goPdfManage() {
   uni.navigateTo({ url: '/pages/import/pdf-manage' })
 }
+
+const MENU_ICON_COLOR = '#4A90E2'
+const menuLineIcons = {
+  stats: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  folder: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+  file: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>'
+}
+function menuIconUri(name) {
+  const svg = (menuLineIcons[name] || '').replace(/C/g, MENU_ICON_COLOR)
+  return 'data:image/svg+xml,' + encodeURIComponent(svg)
+}
 </script>
 
 <style scoped>
@@ -265,7 +276,7 @@ function goPdfManage() {
 }
 .menu-item { display: flex; align-items: center; padding: 32rpx 24rpx; border-bottom: 1rpx solid #f0f0f0; }
 .menu-item:last-child { border-bottom: none; }
-.menu-icon { font-size: 40rpx; margin-right: 24rpx; color: var(--primary); }
+.menu-icon-img { width: 44rpx; height: 44rpx; margin-right: 24rpx; flex-shrink: 0; }
 .menu-text { flex: 1; font-size: 30rpx; color: var(--text); }
 .menu-arrow { font-size: 36rpx; color: var(--text-hint); }
 .storage-card {
