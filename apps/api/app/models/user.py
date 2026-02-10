@@ -4,8 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
-# 默认每用户存储上限 100MB
-DEFAULT_STORAGE_LIMIT_BYTES = 100 * 1024 * 1024
+# 默认每用户存储上限 50MB（初始免费容量）
+DEFAULT_STORAGE_LIMIT_BYTES = 50 * 1024 * 1024
 
 
 class User(Base):
