@@ -219,11 +219,11 @@ function goCreateWithPhoto() {
   uni.navigateTo({ url: '/pages/subjects/create-with-photo' })
 }
 
-/** 直接调起相机，拍完进入裁剪，裁剪后返回本页再由 onShow 跳添加页 */
+/** 从相册选择或拍照，进入裁剪后跳添加页 */
 function openCameraThenCrop() {
   uni.chooseImage({
     count: 1,
-    sourceType: ['camera'],
+    sourceType: ['album', 'camera'],
     success: (res) => {
       setSourcePath(res.tempFilePaths[0])
       uni.navigateTo({ url: '/pages/common/image-crop' })

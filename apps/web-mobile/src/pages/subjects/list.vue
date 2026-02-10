@@ -92,7 +92,7 @@ function onAddTap() {
 function openCameraThenCrop() {
   uni.chooseImage({
     count: 1,
-    sourceType: ['camera'],
+    sourceType: ['album', 'camera'],
     success: (res) => {
       setSourcePath(res.tempFilePaths[0])
       uni.navigateTo({ url: '/pages/common/image-crop' })

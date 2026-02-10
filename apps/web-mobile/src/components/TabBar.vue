@@ -76,7 +76,7 @@ function onAddTap() {
         } else if (res.tapIndex === 1) {
           uni.chooseImage({
             count: 1,
-            sourceType: ['camera'],
+            sourceType: ['album', 'camera'],
             success: (imgRes) => {
               setSourcePath(imgRes.tempFilePaths[0])
               uni.navigateTo({ url: '/pages/common/image-crop' })
