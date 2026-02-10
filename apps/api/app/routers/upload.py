@@ -12,6 +12,7 @@ from app.services.storage import (
     save_question_image,
     delete_file_by_url,
     user_storage_key,
+    list_user_pdfs,
     SUBDIR_PDFS,
 )
 from app.services.llm import analyze_question_image
@@ -159,6 +160,46 @@ async def import_pdf(
         created += 1
     await db.flush()
     return {"ok": True, "import_batch_id": batch.id, "pages": len(pages), "created": created}
+
+
+@router.get("/pdfs")
+async def list_pdfs(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """列出当前用户所有 PDF（导入与导出的），用于 PDF 管理。返回 [{url, filename, size}, ...]。"""
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    storage_key = user_storage_key(u.openid)
+    return list_user_pdfs(storage_key)
+
+
+@router.delete("/pdfs/{filename}")
+async def delete_pdf(
+    filename: str,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """删除当前用户的一个 PDF 文件，并扣减存储用量。filename 为列表接口返回的 filename（如 xxx.pdf）。"""
+    filename = filename.strip().lstrip("/")
+    if not filename or len(filename) > 64 or not all(c.isalnum() or c in ".-_" for c in filename):
+        raise HTTPException(status_code=400, detail="文件名不合法")
+    if not filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="仅支持删除 PDF 文件")
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    storage_key = user_storage_key(u.openid)
+    url = f"/files/{SUBDIR_PDFS}/{storage_key}/{filename}"
+    deleted, freed = delete_file_by_url(url)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="文件不存在或已删除")
+    u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
+    await db.flush()
+    return {"ok": True, "freed": freed}
 
 
 @router.post("/avatar")

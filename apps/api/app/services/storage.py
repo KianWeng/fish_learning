@@ -93,6 +93,30 @@ def save_upload_file(
     return f"/files/{subdir}/{storage_key}/{name}", len(file_content)
 
 
+def list_user_pdfs(storage_key: str) -> list[dict]:
+    """列出用户 uploads/<storage_key>/pdfs/ 下所有 PDF，返回 [{url, filename, size}, ...]。"""
+    if not _safe_storage_key(storage_key):
+        return []
+    base = _user_base(storage_key) / SUBDIR_PDFS
+    if not base.is_dir():
+        return []
+    result = []
+    for p in base.iterdir():
+        if not p.is_file() or p.suffix.lower() != ".pdf":
+            continue
+        name = p.name
+        if not _safe_filename(name):
+            continue
+        try:
+            size = p.stat().st_size
+        except OSError:
+            size = 0
+        url = f"/files/{SUBDIR_PDFS}/{storage_key}/{name}"
+        result.append({"url": url, "filename": name, "size": size})
+    result.sort(key=lambda x: x["filename"])
+    return result
+
+
 def get_file_path(url_path: str) -> Path | None:
     """
     根据访问路径解析本地文件路径。

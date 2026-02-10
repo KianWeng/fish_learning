@@ -113,7 +113,16 @@ async def export_subject_pdf(
     storage_key = user_storage_key(u.openid)
     safe_name = (s.name or "错题本").replace("/", "-").strip()[:50]
     filename = f"错题本-{safe_name}.pdf"
-    url = export_subject_to_pdf_file(s.name or "错题本", questions, filename, storage_key)
+    url, size = export_subject_to_pdf_file(s.name or "错题本", questions, filename, storage_key)
+    if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
+        from app.services.storage import delete_file_by_url
+        delete_file_by_url(url)
+        raise HTTPException(
+            status_code=403,
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请先清理或扩容",
+        )
+    u.storage_used_bytes = (u.storage_used_bytes or 0) + size
+    await db.flush()
     return ExportPdfResponse(url=url, filename=filename)
 
 
