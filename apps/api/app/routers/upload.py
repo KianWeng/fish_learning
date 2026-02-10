@@ -19,6 +19,7 @@ from app.services.llm import analyze_question_image
 from app.routers.files import require_auth
 from app.deps import get_current_user_id, require_subject_owner
 from app.services.pdf_parse import extract_text_by_page, parse_page_to_question
+from app.services.storage_quota import get_effective_storage_limit
 from app.models import Question, ImportBatch, User
 
 logger = logging.getLogger(__name__)
@@ -40,12 +41,13 @@ async def upload_image(
     if not u:
         raise HTTPException(status_code=401, detail="用户不存在")
     storage_key = user_storage_key(u.openid)
+    limit = await get_effective_storage_limit(db, user_id)
     path, size = save_question_image(content, file.filename or "image.jpg", storage_key)
-    if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
+    if (u.storage_used_bytes or 0) + size > limit:
         delete_file_by_url(path)
         raise HTTPException(
             status_code=403,
-            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {limit // (1024*1024)}MB），请购买扩容",
         )
     u.storage_used_bytes = (u.storage_used_bytes or 0) + size
     await db.flush()
@@ -72,12 +74,13 @@ async def upload_and_analyze(
     if not u:
         raise HTTPException(status_code=401, detail="用户不存在")
     storage_key = user_storage_key(u.openid)
+    limit = await get_effective_storage_limit(db, user_id)
     path, file_size = save_question_image(content, filename, storage_key)
-    if (u.storage_used_bytes or 0) + file_size > (u.storage_limit_bytes or 0):
+    if (u.storage_used_bytes or 0) + file_size > limit:
         delete_file_by_url(path)
         raise HTTPException(
             status_code=403,
-            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {limit // (1024*1024)}MB），请购买扩容",
         )
     u.storage_used_bytes = (u.storage_used_bytes or 0) + file_size
     await db.flush()
@@ -122,10 +125,11 @@ async def import_pdf(
     u = r.scalar_one_or_none()
     if not u:
         raise HTTPException(status_code=401, detail="用户不存在")
-    if (u.storage_used_bytes or 0) + file_size > (u.storage_limit_bytes or 0):
+    limit = await get_effective_storage_limit(db, user_id)
+    if (u.storage_used_bytes or 0) + file_size > limit:
         raise HTTPException(
             status_code=403,
-            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {limit // (1024*1024)}MB），请购买扩容",
         )
     storage_key = user_storage_key(u.openid)
     path, _ = save_upload_file(content, file.filename or "import.pdf", SUBDIR_PDFS, storage_key)
@@ -223,12 +227,13 @@ async def upload_avatar(
             u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
             await db.flush()
     storage_key = user_storage_key(u.openid)
+    limit = await get_effective_storage_limit(db, user_id)
     path, size = save_avatar(content, file.filename or "avatar.jpg", storage_key)
-    if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
+    if (u.storage_used_bytes or 0) + size > limit:
         delete_file_by_url(path)
         raise HTTPException(
             status_code=403,
-            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请购买扩容",
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {limit // (1024*1024)}MB），请购买扩容",
         )
     u.storage_used_bytes = (u.storage_used_bytes or 0) + size
     u.avatar_url = path

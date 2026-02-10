@@ -8,6 +8,7 @@ from app.models import Subject, Question, User
 from app.schemas.subject import SubjectCreate, SubjectUpdate, SubjectResponse
 from app.services.export_pdf import export_subject_to_pdf_file
 from app.services.storage import delete_file_by_url, user_storage_key
+from app.services.storage_quota import get_effective_storage_limit
 
 router = APIRouter()
 
@@ -117,15 +118,16 @@ async def export_subject_pdf(
     if not u:
         raise HTTPException(status_code=401, detail="用户不存在")
     storage_key = user_storage_key(u.openid)
+    limit = await get_effective_storage_limit(db, user_id)
     safe_name = (s.name or "错题本").replace("/", "-").strip()[:50]
     filename = f"错题本-{safe_name}.pdf"
     url, size = export_subject_to_pdf_file(s.name or "错题本", questions, filename, storage_key)
-    if (u.storage_used_bytes or 0) + size > (u.storage_limit_bytes or 0):
+    if (u.storage_used_bytes or 0) + size > limit:
         from app.services.storage import delete_file_by_url
         delete_file_by_url(url)
         raise HTTPException(
             status_code=403,
-            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {(u.storage_limit_bytes or 0) // (1024*1024)}MB），请先清理或扩容",
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {limit // (1024*1024)}MB），请先清理或扩容",
         )
     u.storage_used_bytes = (u.storage_used_bytes or 0) + size
     await db.flush()

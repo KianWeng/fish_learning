@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     # 微信小程序登录
     wechat_appid: str = ""
     wechat_secret: str = ""
+    # 微信支付（商户号、APIv3 密钥、商户私钥与证书序列号、支付结果回调地址）
+    wechat_mch_id: str = ""
+    wechat_pay_api_v3_key: str = ""
+    wechat_pay_private_key_path: str = ""
+    wechat_pay_serial_no: str = ""
+    wechat_pay_notify_url: str = ""
+    # 积分与广告：每次观看激励视频奖励积分、每用户每日上限次数
+    points_per_ad_reward: int = 10
+    max_ad_rewards_per_day: int = 20
     # JWT
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"

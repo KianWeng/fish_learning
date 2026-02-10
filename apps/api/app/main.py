@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import subjects, chapters, questions, upload, reviews, auth, files
+from app.routers import subjects, chapters, questions, upload, reviews, auth, files, pay
 
 Path(settings.storage_local_path).mkdir(parents=True, exist_ok=True)
 for sub in ("avatars", "questions", "pdfs"):
@@ -44,6 +44,7 @@ app.include_router(upload.router, prefix="/upload", tags=["upload"])
 app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(files.router, prefix="/files", tags=["files"])
+app.include_router(pay.router, prefix="/pay", tags=["pay"])
 
 
 @app.get("/health")
