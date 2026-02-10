@@ -16,10 +16,12 @@ class ReviewResultBody(BaseModel):
     rating: str  # remember | vague | forget
 
 
-def _question_to_item(q):
+def _question_to_item(q, subject_name: str | None = None, subject_course: str | None = None):
     return {
         "id": q.id,
         "subject_id": q.subject_id,
+        "subject_name": subject_name,
+        "subject_course": subject_course,
         "content": q.content,
         "analysis": q.analysis,
         "answer": q.answer,
@@ -69,7 +71,7 @@ async def list_reviews(
     """按复习状态返回题目列表。today=今日待复习，scheduled=已排期(未到期)，new=未开始，all=全部。"""
     today = date.today()
     q = (
-        select(Question)
+        select(Question, Subject.name, Subject.course)
         .join(Subject, Question.subject_id == Subject.id)
         .where(Subject.user_id == user_id)
     )
@@ -83,8 +85,8 @@ async def list_reviews(
         raise HTTPException(status_code=400, detail="status 须为 today / scheduled / new / all")
     q = q.order_by(Question.next_review_at.asc().nulls_last(), Question.id.desc())
     r = await db.execute(q)
-    rows = r.scalars().all()
-    return [_question_to_item(x) for x in rows]
+    rows = r.all()
+    return [_question_to_item(row[0], subject_name=row[1], subject_course=row[2]) for row in rows]
 
 
 @router.get("/today")
@@ -94,13 +96,13 @@ async def today_reviews(
 ):
     today = date.today()
     r = await db.execute(
-        select(Question)
+        select(Question, Subject.name, Subject.course)
         .join(Subject, Question.subject_id == Subject.id)
         .where(Subject.user_id == user_id, Question.next_review_at <= today)
         .order_by(Question.next_review_at)
     )
-    rows = r.scalars().all()
-    return [_question_to_item(q) for q in rows]
+    rows = r.all()
+    return [_question_to_item(row[0], subject_name=row[1], subject_course=row[2]) for row in rows]
 
 
 @router.post("/{question_id}/result")

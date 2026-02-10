@@ -10,6 +10,7 @@ class Subject(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
+    course: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # 科目：语文/数学/…/其他 或自定义字符串
     sort: Mapped[int] = mapped_column(Integer, default=0)
     cover_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 

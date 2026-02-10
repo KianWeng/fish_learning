@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -19,12 +19,16 @@ class ExportPdfResponse(BaseModel):
 
 @router.get("", response_model=list[SubjectResponse])
 async def list_subjects(
+    course: str | None = Query(None, description="按科目筛选，不传则返回全部"),
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    r = await db.execute(
-        select(Subject).where(Subject.user_id == user_id).order_by(Subject.sort, Subject.id)
-    )
+    """course 为空则不过滤；否则只返回该科目的错题本。"""
+    q = select(Subject).where(Subject.user_id == user_id)
+    if course is not None and course != "":
+        q = q.where(Subject.course == course)
+    q = q.order_by(Subject.sort, Subject.id)
+    r = await db.execute(q)
     return list(r.scalars().all())
 
 
@@ -47,7 +51,7 @@ async def create_subject(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    s = Subject(user_id=user_id, name=body.name, sort=body.sort, cover_url=body.cover_url)
+    s = Subject(user_id=user_id, name=body.name, course=body.course or None, sort=body.sort, cover_url=body.cover_url)
     db.add(s)
     await db.flush()
     await db.refresh(s)
@@ -67,6 +71,8 @@ async def update_subject(
         raise HTTPException(status_code=404, detail="科目不存在")
     if body.name is not None:
         s.name = body.name
+    if body.course is not None:
+        s.course = body.course or None
     if body.sort is not None:
         s.sort = body.sort
     if body.cover_url is not None:
