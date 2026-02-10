@@ -34,7 +34,9 @@
     <view class="storage-card">
       <view class="storage-header">
         <text class="storage-label">存储空间</text>
-        <button class="btn-clear-cache" size="mini" @click="refreshStorage">刷新</button>
+        <view class="btn-expand" @click="goStorageExpand">
+          <text class="btn-expand-text">扩容</text>
+        </view>
       </view>
       <view class="storage-progress-wrap" v-if="storageLimitNum > 0">
         <view class="storage-progress-track">
@@ -52,6 +54,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import CachedImage from '@/components/CachedImage.vue'
 import request from '@/api/request.js'
@@ -142,6 +145,10 @@ onMounted(() => {
   refreshStorage()
 })
 
+onShow(() => {
+  if (token.value) fetchCloudStorage()
+})
+
 function refreshStorage() {
   try {
     const info = uni.getStorageInfoSync()
@@ -221,6 +228,15 @@ function goPdfManage() {
   uni.navigateTo({ url: '/pages/import/pdf-manage' })
 }
 
+function goStorageExpand() {
+  if (!isLoggedIn.value) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    goLogin()
+    return
+  }
+  uni.navigateTo({ url: '/pages/my/storage-expand' })
+}
+
 const MENU_ICON_COLOR = '#4A90E2'
 const menuLineIcons = {
   stats: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
@@ -290,7 +306,14 @@ function menuIconUri(name) {
   gap: 16rpx;
 }
 .storage-header { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.storage-label { font-size: 28rpx; color: var(--text-hint); }
+.storage-label { font-size: 28rpx; color: var(--text-hint); flex: 1; }
+.btn-expand {
+  flex-shrink: 0;
+  padding: 12rpx 24rpx;
+  border-radius: 24rpx;
+  background: var(--primary-bg);
+}
+.btn-expand-text { font-size: 26rpx; color: var(--primary); font-weight: 500; }
 .storage-progress-wrap { width: 100%; }
 .storage-progress-track {
   height: 16rpx;
@@ -306,6 +329,5 @@ function menuIconUri(name) {
 }
 .storage-value { font-size: 26rpx; color: var(--text); }
 .storage-debug { font-size: 22rpx; color: var(--text-hint); margin-top: 8rpx; }
-.btn-clear-cache { flex-shrink: 0; }
 .tabbar-placeholder { height: 120rpx; }
 </style>
