@@ -130,13 +130,20 @@ function goChapters(s) {
 
 function openCardMenu(s) {
   uni.showActionSheet({
-    itemList: ['导出 PDF', '重命名', '替换封面', '删除'],
+    itemList: ['生成学习报告', '导出错题集 PDF', '重命名', '替换封面', '删除'],
     success: (res) => {
-      if (res.tapIndex === 0) exportPdf(s)
-      else if (res.tapIndex === 1) goRename(s)
-      else if (res.tapIndex === 2) changeCover(s)
-      else if (res.tapIndex === 3) doDelete(s)
+      if (res.tapIndex === 0) goReport(s)
+      else if (res.tapIndex === 1) exportPdf(s)
+      else if (res.tapIndex === 2) goRename(s)
+      else if (res.tapIndex === 3) changeCover(s)
+      else if (res.tapIndex === 4) doDelete(s)
     }
+  })
+}
+
+function goReport(s) {
+  uni.navigateTo({
+    url: `/pages/reports/subject-report?subject_id=${s.id}&subject_name=${encodeURIComponent(s.name || '')}`
   })
 }
 
