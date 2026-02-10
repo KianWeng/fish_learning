@@ -89,17 +89,22 @@ async def delete_question(
         raise HTTPException(status_code=404, detail="错题不存在")
     await require_subject_owner(x.subject_id, user_id, db)
     image_url_to_del = x.image_url
+    analysis_image_url_to_del = getattr(x, "analysis_image_url", None) or None
     await db.delete(x)
     await db.flush()
-    if image_url_to_del:
+    total_freed = 0
+    for url in (image_url_to_del, analysis_image_url_to_del):
+        if url:
+            deleted, freed = delete_file_by_url(url)
+            if deleted and freed:
+                total_freed += freed
+    if total_freed > 0:
         from app.models import User
-        deleted, freed = delete_file_by_url(image_url_to_del)
-        if deleted and freed and freed > 0:
-            r = await db.execute(select(User).where(User.id == user_id))
-            u = r.scalar_one_or_none()
-            if u:
-                u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
-                await db.flush()
+        r = await db.execute(select(User).where(User.id == user_id))
+        u = r.scalar_one_or_none()
+        if u:
+            u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - total_freed)
+            await db.flush()
     return {"ok": True}
 
 
@@ -118,6 +123,8 @@ async def create_question(
         analysis=body.analysis,
         answer=body.answer,
         image_url=body.image_url,
+        summary=body.summary,
+        analysis_image_url=body.analysis_image_url,
         source=body.source,
         next_review_at=today,
         review_stage=0,

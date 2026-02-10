@@ -21,6 +21,8 @@ class Question(Base):
     analysis: Mapped[str | None] = mapped_column(Text, nullable=True)
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    analysis_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     source: Mapped[str] = mapped_column(String(16), default=QuestionSource.photo.value)
     next_review_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     review_stage: Mapped[int] = mapped_column(Integer, default=0)

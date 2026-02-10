@@ -9,11 +9,16 @@ class QuestionCreate(BaseModel):
     analysis: str | None = None
     answer: str | None = None
     image_url: str | None = None
+    summary: str | None = None
+    analysis_image_url: str | None = None
     source: str = "photo"
 
 
 class QuestionUpdate(BaseModel):
     user_notes: str | None = None
+    analysis: str | None = None
+    answer: str | None = None
+    analysis_image_url: str | None = None
 
 
 class QuestionResponse(BaseModel):
@@ -24,6 +29,8 @@ class QuestionResponse(BaseModel):
     analysis: str | None
     answer: str | None
     image_url: str | None
+    summary: str | None
+    analysis_image_url: str | None
     source: str
     next_review_at: date | None
     review_stage: int

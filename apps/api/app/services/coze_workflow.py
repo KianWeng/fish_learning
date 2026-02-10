@@ -121,21 +121,21 @@ def parse_workflow_json_output(raw: str) -> dict:
     print(f"[Coze] 解析输出: raw_len={len(raw or '')}")
 
     if not (raw or raw.strip()):
-        return {"content": "", "analysis": "", "answer": ""}
+        return {"content": "", "analysis": "", "answer": "", "summary": ""}
     raw = raw.strip()
     m = re.search(r"\{[\s\S]*\}", raw)
     if not m:
         logger.warning("[Coze] 未匹配到 JSON，返回原始前 2000 字")
         print("[Coze] 未匹配到 JSON，返回原始前 2000 字")
-        return {"content": raw[:2000], "analysis": "", "answer": ""}
+        return {"content": raw[:2000], "analysis": "", "answer": "", "summary": ""}
     try:
         obj = json.loads(m.group())
     except json.JSONDecodeError as e:
         logger.warning("[Coze] JSON 解析失败: %s", e)
         print(f"[Coze] JSON 解析失败: {e}")
-        return {"content": raw[:2000], "analysis": "", "answer": ""}
+        return {"content": raw[:2000], "analysis": "", "answer": "", "summary": ""}
     if not isinstance(obj, dict):
-        return {"content": raw[:2000], "analysis": "", "answer": ""}
+        return {"content": raw[:2000], "analysis": "", "answer": "", "summary": ""}
 
     logger.info("[Coze] 解析到字段: %s", list(obj.keys()))
     print(f"[Coze] 解析到字段: {list(obj.keys())}")
@@ -159,6 +159,15 @@ def parse_workflow_json_output(raw: str) -> dict:
     )
     analysis = obj.get("analysis") or obj.get("解析", "")
     answer = obj.get("answer") or obj.get("答案", "")
+    summary = obj.get("summary") or ""
+    if not summary and ("知识点" in obj or "易错点" in obj):
+        parts = []
+        if obj.get("知识点"):
+            parts.append(f"知识点：{obj['知识点']}")
+        if obj.get("易错点"):
+            parts.append(f"易错点：{obj['易错点']}")
+        if parts:
+            summary = "\n".join(parts)
 
     # 若有 options（如选择题 A/B/C/D/E），追加到题目内容后便于展示
     options = obj.get("options")
@@ -166,9 +175,9 @@ def parse_workflow_json_output(raw: str) -> dict:
         opts_text = " ".join(f"{k}. {v}" for k, v in sorted(options.items()))
         content = f"{content}\n选项：{opts_text}".strip()
 
-    result = {"content": content, "analysis": analysis, "answer": answer}
-    logger.info("[Coze] 解析结果: content_len=%d, analysis_len=%d, answer=%s", len(content), len(analysis), answer[:50] if answer else "")
-    print(f"[Coze] 解析结果: content_len={len(content)}, analysis_len={len(analysis)}, answer={answer[:80]!r}{'...' if len(answer) > 80 else ''}")
+    result = {"content": content, "analysis": analysis, "answer": answer, "summary": summary}
+    logger.info("[Coze] 解析结果: content_len=%d, analysis_len=%d, answer=%s, summary_len=%d", len(content), len(analysis), answer[:50] if answer else "", len(summary))
+    print(f"[Coze] 解析结果: content_len={len(content)}, analysis_len={len(analysis)}, answer={answer[:80]!r}{'...' if len(answer) > 80 else ''}, summary_len={len(summary)}")
     return result
 
 
@@ -186,6 +195,7 @@ async def analyze_question_image_via_coze(file_content: bytes, filename: str = "
             "content": "[未配置 Coze] 请设置 COZE_API_KEY 与 COZE_WORKFLOW_ID。",
             "analysis": "",
             "answer": "",
+            "summary": "",
         }
     try:
         file_id = await upload_image_to_coze(file_content, filename)
@@ -200,6 +210,7 @@ async def analyze_question_image_via_coze(file_content: bytes, filename: str = "
             "content": f"[Coze 请求失败] HTTP {e.response.status_code}",
             "analysis": "",
             "answer": "",
+            "summary": "",
         }
     except Exception as e:
         logger.exception("[Coze] 分析异常")
@@ -208,4 +219,5 @@ async def analyze_question_image_via_coze(file_content: bytes, filename: str = "
             "content": f"[Coze 分析失败] {str(e)}",
             "analysis": "",
             "answer": "",
+            "summary": "",
         }

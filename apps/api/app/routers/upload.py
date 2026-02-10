@@ -111,6 +111,7 @@ async def upload_and_analyze(
         "content": result["content"],
         "analysis": result["analysis"],
         "answer": result["answer"],
+        "summary": result.get("summary", ""),
     }
 
     # 打印返回给前端的数据摘要
