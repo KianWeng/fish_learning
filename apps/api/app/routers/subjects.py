@@ -6,9 +6,11 @@ from app.database import get_db
 from app.deps import get_current_user_id
 from app.models import Subject, Question, User
 from app.schemas.subject import SubjectCreate, SubjectUpdate, SubjectResponse
-from app.services.export_pdf import export_subject_to_pdf_file
+from app.services.export_pdf import export_subject_to_pdf_file, export_report_to_pdf_file
 from app.services.storage import delete_file_by_url, user_storage_key
 from app.services.storage_quota import get_effective_storage_limit
+from app.services.subject_report import aggregate_subject_stats
+from app.services.report_llm import generate_subject_report
 
 router = APIRouter()
 
@@ -19,6 +21,13 @@ PDF_EXPORT_POINTS_COST = 100
 class ExportPdfResponse(BaseModel):
     url: str
     filename: str
+
+
+class SubjectReportResponse(BaseModel):
+    subject_name: str
+    report: str
+    knowledge_map: dict
+    generated_at: str | None = None
 
 
 @router.get("", response_model=list[SubjectResponse])
@@ -84,6 +93,79 @@ async def update_subject(
     await db.flush()
     await db.refresh(s)
     return s
+
+
+@router.get("/{subject_id}/report", response_model=SubjectReportResponse)
+async def get_subject_report(
+    subject_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """获取单本错题本的学习报告（自然语言 + 知识点思维导图）。数据不足时返回提示文案。"""
+    from app.deps import require_subject_owner
+    from datetime import datetime, timezone
+    await require_subject_owner(subject_id, user_id, db)
+    stats = await aggregate_subject_stats(db, subject_id)
+    if not stats:
+        raise HTTPException(status_code=404, detail="科目不存在")
+    subject_name = stats["subject_name"]
+    total = stats["overview"].get("total") or 0
+    if total < 2:
+        return SubjectReportResponse(
+            subject_name=subject_name,
+            report="暂无足够数据生成报告，请在本错题本中添加至少 2 道错题并复习后再查看。",
+            knowledge_map={"label": subject_name, "children": []},
+            generated_at=datetime.now(timezone.utc).isoformat(),
+        )
+    report, knowledge_map = await generate_subject_report(stats)
+    return SubjectReportResponse(
+        subject_name=subject_name,
+        report=report,
+        knowledge_map=knowledge_map,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@router.post("/{subject_id}/report/export/pdf", response_model=ExportPdfResponse)
+async def export_report_pdf(
+    subject_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """导出学习报告为 PDF（含报告正文 + 知识点总结），消耗积分与错题本 PDF 一致。"""
+    from app.deps import require_subject_owner
+    r = await db.execute(select(Subject).where(Subject.id == subject_id, Subject.user_id == user_id))
+    s = r.scalar_one_or_none()
+    if not s:
+        raise HTTPException(status_code=404, detail="科目不存在")
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    if (u.points or 0) < PDF_EXPORT_POINTS_COST:
+        raise HTTPException(
+            status_code=402,
+            detail=f"积分不足，导出 PDF 需要 {PDF_EXPORT_POINTS_COST} 积分（当前 {u.points or 0} 积分）",
+        )
+    stats = await aggregate_subject_stats(db, subject_id)
+    if not stats or (stats["overview"].get("total") or 0) < 1:
+        raise HTTPException(status_code=400, detail="该错题本下暂无题目，无法生成报告")
+    report, knowledge_map = await generate_subject_report(stats)
+    storage_key = user_storage_key(u.openid)
+    limit = await get_effective_storage_limit(db, user_id)
+    safe_name = (s.name or "错题本").replace("/", "-").strip()[:50]
+    filename = f"学习报告-{safe_name}.pdf"
+    url, size = export_report_to_pdf_file(s.name or "错题本", report, knowledge_map, storage_key)
+    if (u.storage_used_bytes or 0) + size > limit:
+        delete_file_by_url(url)
+        raise HTTPException(
+            status_code=403,
+            detail=f"存储空间不足（已用 {(u.storage_used_bytes or 0) // (1024*1024)}MB / 上限 {limit // (1024*1024)}MB），请先清理或扩容",
+        )
+    u.storage_used_bytes = (u.storage_used_bytes or 0) + size
+    u.points = (u.points or 0) - PDF_EXPORT_POINTS_COST
+    await db.flush()
+    return ExportPdfResponse(url=url, filename=filename)
 
 
 @router.post("/{subject_id}/export/pdf", response_model=ExportPdfResponse)

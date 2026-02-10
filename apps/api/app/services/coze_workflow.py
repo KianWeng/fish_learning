@@ -181,6 +181,86 @@ def parse_workflow_json_output(raw: str) -> dict:
     return result
 
 
+async def run_report_workflow(stats_input: str) -> str:
+    """
+    调用学习报告 Coze 工作流，传入 JSON 字符串（见 COZE_REPORT_WORKFLOW.md）。
+    返回工作流输出的原始字符串（应为包含 report 与 knowledge_map 的 JSON）。
+    """
+    base = settings.coze_base_url.rstrip("/")
+    url = base + COZE_WORKFLOW_RUN_URL
+    param_name = getattr(settings, "coze_report_workflow_parameter", None) or "input"
+    body = {
+        "workflow_id": settings.coze_report_workflow_id,
+        "parameters": {param_name: stats_input},
+    }
+    logger.info("[Coze] 调用报告工作流: workflow_id=%s, param=%s", settings.coze_report_workflow_id, param_name)
+    headers = {
+        "Authorization": f"Bearer {settings.coze_api_key}",
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        resp = await client.post(url, headers=headers, json=body)
+        resp.raise_for_status()
+        data = resp.json()
+
+    code = data.get("code")
+    msg = data.get("msg", "")
+    if code != 0:
+        logger.warning("[Coze] 报告工作流失败: code=%s, msg=%s", code, msg)
+        raise RuntimeError(msg or "Coze 报告工作流执行失败")
+
+    out = data.get("data")
+    if out is None:
+        return ""
+    if isinstance(out, str):
+        return out
+    if isinstance(out, dict):
+        if "output" in out:
+            v = out["output"]
+            return v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+        if "outputs" in out and isinstance(out["outputs"], list) and len(out["outputs"]) > 0:
+            v = out["outputs"][0].get("value") if isinstance(out["outputs"][0], dict) else out["outputs"][0]
+            return v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+        if "result" in out:
+            v = out["result"]
+            return v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+    return json.dumps(out, ensure_ascii=False)
+
+
+def parse_report_workflow_output(raw: str) -> tuple[str, dict]:
+    """
+    从报告工作流输出中解析 report（自然语言）与 knowledge_map（思维导图树）。
+    返回 (report: str, knowledge_map: dict)。knowledge_map 为 { label, children?, count?, mastered? }。
+    """
+    if not (raw or raw.strip()):
+        return "暂无足够数据生成报告。", {"label": "", "children": []}
+    raw = raw.strip()
+    m = re.search(r"\{[\s\S]*\}", raw)
+    if not m:
+        return raw[:2000] if len(raw) > 2000 else raw, {"label": "", "children": []}
+    try:
+        obj = json.loads(m.group())
+    except json.JSONDecodeError:
+        return raw[:2000], {"label": "", "children": []}
+    if not isinstance(obj, dict):
+        return raw[:2000], {"label": "", "children": []}
+    # 支持 output 内层
+    if isinstance(obj.get("output"), str):
+        try:
+            inner = json.loads(obj["output"])
+            if isinstance(inner, dict):
+                obj = inner
+        except json.JSONDecodeError:
+            pass
+    report = obj.get("report") or obj.get("报告") or ""
+    knowledge_map = obj.get("knowledge_map") or obj.get("思维导图") or {}
+    if not isinstance(knowledge_map, dict):
+        knowledge_map = {"label": "", "children": []}
+    if "label" not in knowledge_map and "children" not in knowledge_map:
+        knowledge_map = {"label": str(knowledge_map)[:100], "children": []}
+    return report, knowledge_map
+
+
 async def analyze_question_image_via_coze(file_content: bytes, filename: str = "image.jpg") -> dict:
     """
     通过 Coze 工作流分析错题图片：上传图片 -> 运行工作流 -> 解析 JSON 输出。

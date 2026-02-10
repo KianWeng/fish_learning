@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     coze_base_url: str = "https://api.coze.cn"
     coze_workflow_id: str = ""
     coze_image_parameter: str = "image"
+    # 学习报告 Coze 工作流：输入为 JSON 字符串（见文档 COZE_REPORT_WORKFLOW.md）
+    coze_report_workflow_id: str = ""
+    coze_report_workflow_parameter: str = "input"
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"

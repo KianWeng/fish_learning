@@ -181,3 +181,108 @@ def export_subject_to_pdf_file(
     )
     path, size = save_export_pdf(pdf_bytes, display_base, storage_key)
     return path, size
+
+
+def build_report_pdf(subject_name: str, report: str, knowledge_map: dict) -> bytes:
+    """
+    生成学习报告 PDF：标题 + 自然语言报告正文 + 知识点总结（层级列表）。
+    knowledge_map: { "label": str, "children": [...], 可选 "count", "mastered" }。
+    """
+    buf = io.BytesIO()
+    font_name = _register_chinese_font()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
+        topMargin=14 * mm,
+        bottomMargin=14 * mm,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name="ReportTitle",
+        parent=styles["Heading1"],
+        fontName=font_name,
+        fontSize=16,
+        spaceAfter=6,
+    )
+    section_style = ParagraphStyle(
+        name="ReportSection",
+        parent=styles["Heading2"],
+        fontName=font_name,
+        fontSize=12,
+        spaceBefore=8,
+        spaceAfter=4,
+    )
+    body_style = ParagraphStyle(
+        name="ReportBody",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=10,
+        spaceAfter=4,
+        leading=14,
+    )
+    bullet_style = ParagraphStyle(
+        name="ReportBullet",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=9,
+        leftIndent=12 * mm,
+        spaceAfter=2,
+        leading=12,
+    )
+    sub_style = ParagraphStyle(
+        name="ReportSub",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=9,
+        leftIndent=20 * mm,
+        spaceAfter=1,
+        leading=11,
+    )
+
+    def para(text: str, style=body_style):
+        text = (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return Paragraph(_safe_text(text, 6000), style)
+
+    story = []
+    story.append(para(f"学习报告：{_safe_text(subject_name, 200)}", title_style))
+    story.append(Spacer(1, 4 * mm))
+    story.append(para("一、报告正文", section_style))
+    story.append(para(report or "暂无报告内容。", body_style))
+    story.append(Spacer(1, 4 * mm))
+    story.append(para("二、知识点总结", section_style))
+
+    def add_tree(node: dict, depth: int):
+        label = node.get("label") or ""
+        if not label:
+            return
+        count = node.get("count")
+        mastered = node.get("mastered")
+        suffix = ""
+        if count is not None and mastered is not None:
+            suffix = f"（{mastered}/{count} 已掌握）"
+        elif count is not None:
+            suffix = f"（{count} 题）"
+        line = label + suffix
+        if depth == 0:
+            story.append(para(line, bullet_style))
+        else:
+            story.append(para("· " + line, sub_style))
+        for ch in node.get("children") or []:
+            if isinstance(ch, dict):
+                add_tree(ch, depth + 1)
+
+    add_tree(knowledge_map, 0)
+    doc.build(story)
+    return buf.getvalue()
+
+
+def export_report_to_pdf_file(
+    subject_name: str, report: str, knowledge_map: dict, storage_key: str
+) -> tuple[str, int]:
+    """生成学习报告 PDF 并保存到 uploads/<storage_key>/pdfs/，返回 (访问路径, 字节数)。"""
+    pdf_bytes = build_report_pdf(subject_name, report, knowledge_map)
+    display_base = "学习报告-" + re.sub(r"[^\w\u4e00-\u9fff\-]", "_", (subject_name or "错题本")[:40])
+    path, size = save_export_pdf(pdf_bytes, display_base, storage_key)
+    return path, size
