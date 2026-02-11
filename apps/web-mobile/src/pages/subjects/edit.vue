@@ -124,7 +124,17 @@ async function submit() {
 .row { margin-bottom: 32rpx; }
 .label { display: block; font-size: 28rpx; color: var(--text-secondary); margin-bottom: 12rpx; }
 .picker-value { padding: 24rpx; border: 1rpx solid #eee; border-radius: 12rpx; font-size: 30rpx; color: var(--text); }
-.input { padding: 24rpx; border: 1rpx solid #eee; border-radius: 12rpx; font-size: 30rpx; color: var(--text); }
+.input {
+  width: 100%;
+  min-height: 88rpx;
+  padding: 24rpx;
+  border: 1rpx solid #eee;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  line-height: 1.5;
+  color: var(--text);
+  box-sizing: border-box;
+}
 .btn { margin-top: 24rpx; padding: 28rpx; border-radius: 24rpx; font-size: 30rpx; }
 .primary { background: var(--primary); color: #fff; border: none; }
 </style>

@@ -123,10 +123,12 @@ async function submit() {
 .hint { display: block; font-size: 24rpx; color: #999; margin-bottom: 16rpx; }
 .input {
   width: 100%;
+  min-height: 88rpx;
   padding: 24rpx;
   border: 1rpx solid #e5e7eb;
   border-radius: 12rpx;
   font-size: 30rpx;
+  line-height: 1.5;
   box-sizing: border-box;
 }
 .upload-area {
