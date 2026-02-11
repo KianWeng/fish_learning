@@ -1,6 +1,7 @@
 import logging
 from datetime import date
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Body
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -124,6 +125,35 @@ async def upload_and_analyze(
     print(f"[upload/image/analyze] 返回完整数据: {response}")
 
     return response
+
+
+class DeleteImageBody(BaseModel):
+    url: str
+
+
+@router.post("/image/delete")
+async def delete_question_image(
+    body: DeleteImageBody,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """删除一次上传的题目图片（如识别失败后用户选择不手动输入时调用），仅允许删除本人存储下的 /files/questions/ 文件，并扣减已用容量。"""
+    url = (body.url or "").strip()
+    if not url.startswith("/files/questions/"):
+        raise HTTPException(status_code=400, detail="仅支持删除题目图片")
+    r = await db.execute(select(User).where(User.id == user_id))
+    u = r.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    storage_key = user_storage_key(u.openid)
+    if f"/files/questions/{storage_key}/" not in url:
+        raise HTTPException(status_code=403, detail="只能删除本人上传的图片")
+    deleted, freed = delete_file_by_url(url)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="文件不存在或已删除")
+    u.storage_used_bytes = max(0, (u.storage_used_bytes or 0) - freed)
+    await db.flush()
+    return {"ok": True}
 
 
 @router.post("/pdf/import")
