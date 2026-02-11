@@ -21,7 +21,7 @@
     </view>
     <view class="card">
       <text class="label">解析</text>
-      <textarea class="content-edit" v-model="analysisEdit" placeholder="可手动修改 AI 解析，或上传解析图片" />
+      <textarea class="content-edit" v-model="analysisEdit" placeholder="可手动修改 AI 解析，或上传解析图片" :maxlength="-1" />
       <view class="analysis-image-wrap" v-if="analysisImageFullUrl">
         <CachedImage img-class="analysis-img" :src="analysisImageFullUrl" mode="widthFix" @click="openAnalysisImagePreview" />
         <text class="img-hint">解析附图，点击放大</text>
@@ -30,7 +30,7 @@
     </view>
     <view class="card">
       <text class="label">答案</text>
-      <textarea class="answer-input" v-model="answerEdit" placeholder="可手动修改答案" />
+      <textarea class="answer-input" v-model="answerEdit" placeholder="可手动修改答案" :maxlength="-1" />
       <view class="save-actions">
         <button class="btn-save" size="mini" @click="saveAnalysisAndAnswer">保存解析与答案</button>
       </view>

@@ -10,19 +10,19 @@
       </view>
       <view class="field">
         <text class="label">题目</text>
-        <textarea class="textarea" v-model="form.content" placeholder="题目内容" />
+        <textarea class="textarea" v-model="form.content" placeholder="题目内容" :maxlength="-1" />
       </view>
       <view class="field summary-field" v-if="form.summary">
         <text class="label">知识点·易错点</text>
-        <text class="summary-text">{{ form.summary }}</text>
+        <scroll-view class="summary-wrap" scroll-y>{{ form.summary }}</scroll-view>
       </view>
       <view class="field">
         <text class="label">解析</text>
-        <textarea class="textarea" v-model="form.analysis" placeholder="解析" />
+        <textarea class="textarea textarea-analysis" v-model="form.analysis" placeholder="解析" :maxlength="-1" />
       </view>
       <view class="field">
         <text class="label">答案</text>
-        <input class="input" v-model="form.answer" placeholder="答案" />
+        <textarea class="textarea textarea-answer" v-model="form.answer" placeholder="答案" :maxlength="-1" />
       </view>
       <view class="field" v-if="createBookMode">
         <text class="label">错题本名称</text>
@@ -275,9 +275,20 @@ onMounted(async () => {
 .img { width: 100%; border-radius: 8rpx; }
 .field { margin-bottom: 24rpx; }
 .label { display: block; font-size: 28rpx; color: #666; margin-bottom: 8rpx; }
-.textarea { width: 100%; min-height: 160rpx; padding: 20rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 28rpx; box-sizing: border-box; }
-.input { padding: 24rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 30rpx; width: 100%; box-sizing: border-box; }
+.textarea {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 20rpx;
+  border: 1rpx solid #eee;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.textarea-answer { min-height: 100rpx; }
+.textarea-analysis { min-height: 280rpx; }
+.input { width: 100%; min-height: 88rpx; padding: 24rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 30rpx; line-height: 1.5; box-sizing: border-box; }
 .picker { padding: 24rpx; border: 1rpx solid #eee; border-radius: 8rpx; font-size: 30rpx; }
 .summary-field { background: linear-gradient(135deg, #e8f5e9 0%, #fff8e1 100%); border-radius: 12rpx; padding: 24rpx; border: 1rpx solid #c8e6c9; }
-.summary-text { font-size: 28rpx; color: #2e7d32; white-space: pre-wrap; word-break: break-all; }
+.summary-wrap { height: 320rpx; font-size: 28rpx; color: #2e7d32; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
 </style>
