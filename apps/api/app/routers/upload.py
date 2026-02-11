@@ -106,24 +106,32 @@ async def upload_and_analyze(
     u.storage_used_bytes = (u.storage_used_bytes or 0) + file_size
     await db.flush()
 
-    result = await analyze_question_image(image_bytes=content)
+    try:
+        result = await analyze_question_image(image_bytes=content)
+    except Exception as e:
+        logger.exception("[upload/image/analyze] 识图异常，仍返回 200 带 url 供前端弹「手动输入」")
+        err_msg = getattr(e, "message", str(e)) or "识图服务异常，请稍后重试或换一张更清晰的图片。"
+        if len(err_msg) > 200:
+            err_msg = err_msg[:200] + "…"
+        result = {
+            "content": err_msg,
+            "analysis": "",
+            "answer": "",
+            "summary": "",
+        }
+
     response = {
         "url": path,
         "content": result["content"],
-        "analysis": result["analysis"],
-        "answer": result["answer"],
+        "analysis": result.get("analysis", ""),
+        "answer": result.get("answer", ""),
         "summary": result.get("summary", ""),
     }
 
-    # 打印返回给前端的数据摘要
     logger.info(
-        "[upload/image/analyze] 返回前端: url=%s, content_len=%d, analysis_len=%d, answer=%s",
-        response["url"], len(response["content"]), len(response["analysis"]), response["answer"][:50] if response["answer"] else ""
+        "[upload/image/analyze] 返回前端: url=%s, content_len=%d",
+        response["url"], len(response["content"]),
     )
-    answer_preview = response["answer"][:80] + "..." if len(response["answer"]) > 80 else response["answer"]
-    print(f"[upload/image/analyze] 返回前端: url={response['url']}, content_len={len(response['content'])}, analysis_len={len(response['analysis'])}, answer={answer_preview!r}")
-    print(f"[upload/image/analyze] 返回完整数据: {response}")
-
     return response
 
 
