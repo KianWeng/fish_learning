@@ -49,13 +49,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
 import { listSubjects, createSubject } from '@/api/subjects.js'
 import { listChapters } from '@/api/chapters.js'
-import { uploadAndAnalyzeImage, createQuestion } from '@/api/questions.js'
+import { uploadAndAnalyzeImage, createQuestion, deleteQuestionImage } from '@/api/questions.js'
 import { setSourcePath, getResultPath, clear } from '@/utils/crop-store.js'
 
 const result = ref(null)
@@ -147,13 +147,65 @@ function openCameraOrAlbum(sourceType) {
   })
 }
 
+/** 后端返回的 content 是否为识别失败（未配置、分析失败、超时等） */
+function isRecognitionFailure(data) {
+  if (!data || !data.url) {
+    console.log('[add] isRecognitionFailure false: 无 data 或 data.url', { hasData: !!data, hasUrl: !!data?.url })
+    return false
+  }
+  const content = (data.content && typeof data.content === 'string') ? data.content.trim() : ''
+  if (!content) {
+    console.log('[add] isRecognitionFailure false: content 为空')
+    return false
+  }
+  const keywords = ['[', '未配置', '请配置', '请设置', '分析失败', '请求失败', '识别失败', '超时', '请稍后重试', '换一张']
+  const matched = keywords.some(k => (k === '[' ? content.startsWith('[') : content.includes(k)))
+  console.log('[add] isRecognitionFailure check content=', content.slice(0, 80), 'matched=', matched)
+  return matched
+}
+
 async function useCroppedImage(croppedPath) {
   if (!croppedPath) return
   croppedImagePath.value = croppedPath
   uni.showLoading({ title: '识别中...' })
   try {
     const data = await uploadAndAnalyzeImage(croppedPath)
+    console.log('[add] uploadAndAnalyzeImage 返回 data=', { url: data?.url, contentLen: data?.content?.length, contentPreview: data?.content?.slice?.(0, 80) })
     uni.hideLoading()
+    clear()
+    const isFail = isRecognitionFailure(data)
+    console.log('[add] isRecognitionFailure=', isFail, 'hasUrl=', !!data?.url, 'contentPreview=', data?.content?.slice?.(0, 60))
+    if (isFail) {
+      console.log('[add] 进入识别失败弹窗分支')
+      uni.showModal({
+        title: '识别失败',
+        content: '是否手动输入错题？选择「手动输入」可保留图片并自行填写；选择「取消」将删除本次上传的图片。',
+        confirmText: '手动输入',
+        cancelText: '取消',
+        success: async (res) => {
+          if (res.confirm) {
+            result.value = { url: data.url, content: '', analysis: '', answer: '', summary: data.summary || '' }
+            form.value.content = ''
+            form.value.analysis = ''
+            form.value.answer = ''
+            form.value.image_url = data.url || ''
+            form.value.summary = data.summary || ''
+            imageFullUrl.value = (data.url && !data.url.startsWith('http')) ? (API_BASE_URL.replace(/\/$/, '') + (data.url.startsWith('/') ? data.url : '/' + data.url)) : (data.url || '')
+            await nextTick()
+          } else {
+            if (data.url) {
+              try {
+                await deleteQuestionImage(data.url)
+              } catch (_) {}
+            }
+            reset()
+            goBack()
+          }
+        }
+      })
+      return
+    }
+    console.log('[add] 识别成功，填充表单')
     result.value = data
     form.value.content = data.content || ''
     form.value.analysis = data.analysis || ''
@@ -161,9 +213,14 @@ async function useCroppedImage(croppedPath) {
     form.value.image_url = data.url || ''
     form.value.summary = data.summary || ''
   } catch (e) {
+    console.warn('[add] useCroppedImage catch', e?.message || e?.errMsg || e, 'name=', e?.name)
     uni.hideLoading()
-    uni.showToast({ title: e.message || '上传或识别失败', icon: 'none' })
-  } finally {
+    const msg = e?.errMsg || e?.message || ''
+    const isTimeout = typeof msg === 'string' && msg.includes('timeout')
+    uni.showToast({
+      title: isTimeout ? '请求超时，识图较慢请稍后重试或换一张' : (msg || '上传或识别失败'),
+      icon: 'none'
+    })
     clear()
   }
 }
