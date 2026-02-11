@@ -13,6 +13,46 @@ COZE_UPLOAD_URL = "/v1/files/upload"
 COZE_WORKFLOW_RUN_URL = "/v1/workflow/run"
 
 
+def _get_workflow_timeout() -> float:
+    """识图工作流超时（秒），从配置读取，便于 .env 调大。"""
+    return float(getattr(settings, "coze_workflow_timeout", 120) or 120)
+
+
+def _log_timeout_detail(
+    e: Exception,
+    *,
+    filename: str = "",
+    file_size: int = 0,
+    file_id: str = "",
+) -> None:
+    """超时时打印详细诊断信息便于排查（含 file_id 便于区分并发请求）。"""
+    exc_type = type(e).__name__
+    exc_msg = str(e) if str(e) else repr(e)
+    req = getattr(e, "request", None)
+    req_url = str(getattr(req, "url", None)) if req else ""
+    req_method = getattr(req, "method", None) if req else ""
+    if not req_url:
+        req_url = f"{settings.coze_base_url.rstrip('/')}{COZE_WORKFLOW_RUN_URL}"
+    timeout = _get_workflow_timeout()
+    lines = [
+        "[Coze 超时] ========== 诊断信息 ==========",
+        f"  异常类型: {exc_type}",
+        f"  异常信息: {exc_msg}",
+        f"  当前配置超时: {timeout}s",
+        f"  请求 URL: {req_url}",
+        f"  请求方法: {req_method or 'POST'}",
+        f"  Coze file_id: {file_id or '(未拿到)'}",
+        f"  图片文件名: {filename}",
+        f"  图片大小: {file_size} bytes ({file_size / 1024:.1f} KB)",
+        f"  工作流 ID: {getattr(settings, 'coze_workflow_id', '')}",
+        "  若经常超时可在 .env 设置 COZE_WORKFLOW_TIMEOUT=180 或 240",
+        "[Coze 超时] =====================================",
+    ]
+    msg = "\n".join(lines)
+    logger.warning("[Coze] 请求超时 file_id=%s size=%d timeout=%s", file_id or "", file_size, timeout)
+    print(msg)
+
+
 async def upload_image_to_coze(file_content: bytes, filename: str = "image.jpg") -> str:
     """
     将图片上传到 Coze，返回 file_id。
@@ -62,7 +102,9 @@ async def run_workflow(file_id: str) -> str:
         "Authorization": f"Bearer {settings.coze_api_key}",
         "Content-Type": "application/json",
     }
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    timeout = _get_workflow_timeout()
+    logger.info("[Coze] 识图工作流发起请求: file_id=%s, timeout=%ss", file_id, timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.post(url, headers=headers, json=body)
         resp.raise_for_status()
         data = resp.json()
@@ -193,7 +235,17 @@ async def run_report_workflow(stats_input: str) -> str:
         "workflow_id": settings.coze_report_workflow_id,
         "parameters": {param_name: stats_input},
     }
-    logger.info("[Coze] 调用报告工作流: workflow_id=%s, param=%s", settings.coze_report_workflow_id, param_name)
+    # 调试：输入给 Coze 的完整数据
+    logger.info("[Coze 报告] 调用报告工作流: workflow_id=%s, param=%s", settings.coze_report_workflow_id, param_name)
+    logger.debug("[Coze 报告] 输入 JSON 长度=%d", len(stats_input))
+    try:
+        input_preview = json.dumps(json.loads(stats_input), ensure_ascii=False, indent=2)[:4000]
+    except Exception:
+        input_preview = stats_input[:4000]
+    print("[Coze 报告] ========== 输入给 Coze 工作流的数据 ==========")
+    print(input_preview + ("\n...(截断)" if len(stats_input) > 4000 else ""))
+    print("[Coze 报告] =============================================")
+
     headers = {
         "Authorization": f"Bearer {settings.coze_api_key}",
         "Content-Type": "application/json",
@@ -202,6 +254,16 @@ async def run_report_workflow(stats_input: str) -> str:
         resp = await client.post(url, headers=headers, json=body)
         resp.raise_for_status()
         data = resp.json()
+
+    # 调试：Coze 返回的完整响应
+    try:
+        full_resp = json.dumps(data, ensure_ascii=False, indent=2)
+    except Exception:
+        full_resp = str(data)
+    logger.info("[Coze 报告] 响应 code=%s, msg=%s", data.get("code"), data.get("msg", ""))
+    print("[Coze 报告] ========== Coze 返回的完整数据 ==========")
+    print(full_resp[:8000] + ("\n...(截断)" if len(full_resp) > 8000 else ""))
+    print("[Coze 报告] =============================================")
 
     code = data.get("code")
     msg = data.get("msg", "")
@@ -288,6 +350,14 @@ async def analyze_question_image_via_coze(file_content: bytes, filename: str = "
         print(f"[Coze] HTTP 错误: status={e.response.status_code}, body={e.response.text[:200]}")
         return {
             "content": f"[Coze 请求失败] HTTP {e.response.status_code}",
+            "analysis": "",
+            "answer": "",
+            "summary": "",
+        }
+    except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.WriteTimeout) as e:
+        _log_timeout_detail(e, filename=filename, file_size=len(file_content), file_id=file_id)
+        return {
+            "content": "识图服务响应超时，请稍后重试或换一张更清晰的图片。",
             "analysis": "",
             "answer": "",
             "summary": "",

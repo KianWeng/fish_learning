@@ -11,11 +11,12 @@ class Settings(BaseSettings):
     api_base_url: str = ""
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
-    # Coze 工作流（优先于 OpenAI）：鉴权 PAT、工作流 ID、图片参数名
+    # Coze 工作流（优先于 OpenAI）：鉴权 PAT、工作流 ID、图片参数名、识图请求超时（秒）
     coze_api_key: str = ""
     coze_base_url: str = "https://api.coze.cn"
     coze_workflow_id: str = ""
     coze_image_parameter: str = "image"
+    coze_workflow_timeout: int = 240  # 识图工作流 HTTP 超时，Coze 处理慢时可调大（如 180、240）
     # 学习报告 Coze 工作流：输入为 JSON 字符串（见文档 COZE_REPORT_WORKFLOW.md）
     coze_report_workflow_id: str = ""
     coze_report_workflow_parameter: str = "input"

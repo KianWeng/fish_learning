@@ -3,11 +3,14 @@
 输入为单本错题本聚合数据，输出自然语言 report 与思维导图 knowledge_map。
 """
 import json
+import logging
 import re
 
 from app.config import settings
 
 from app.services.coze_workflow import run_report_workflow, parse_report_workflow_output
+
+logger = logging.getLogger(__name__)
 
 _openai_client = None
 
@@ -43,7 +46,16 @@ async def generate_subject_report(stats: dict) -> tuple[str, dict]:
 
     if _use_coze_report():
         try:
+            logger.info("[学习报告] 使用 Coze 工作流, subject=%s, 输入长度=%d", subject_name, len(input_json))
             raw = await run_report_workflow(input_json)
+            logger.info("[学习报告] Coze 返回原始长度=%d", len(raw))
+            if raw:
+                try:
+                    preview = (raw[:2000] + "...") if len(raw) > 2000 else raw
+                    logger.debug("[学习报告] Coze 原始输出预览: %s", preview)
+                    print("[学习报告] Coze 工作流返回的原始字符串（解析前）:\n", preview)
+                except Exception:
+                    pass
             report, knowledge_map = parse_report_workflow_output(raw)
             return report or "暂无足够数据生成报告。", _normalize_knowledge_map(knowledge_map, subject_name)
         except Exception as e:
