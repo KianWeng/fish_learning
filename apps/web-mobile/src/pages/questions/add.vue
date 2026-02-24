@@ -1,12 +1,22 @@
 <template>
   <view class="page">
     <view class="section empty-section" v-if="!result">
-      <text class="empty-tip">请从错题本或章节页点击 + 拍照添加错题</text>
+      <text class="empty-tip">请从错题本或章节页点击 + 添加错题</text>
       <button class="btn default" @click="goBack">返回</button>
     </view>
     <view class="section" v-else>
       <view class="preview" v-if="previewImageUrl">
         <image :src="previewImageUrl" mode="widthFix" class="img" />
+        <view v-if="manualMode" class="preview-actions">
+          <text class="link" @click="onReplaceImage">更换</text>
+        </view>
+      </view>
+      <view v-else-if="manualMode" class="field image-add-field">
+        <text class="label">原题图片</text>
+        <view class="image-add-placeholder" @click="onAddImage">
+          <text class="placeholder-text">点击添加图片</text>
+          <text class="placeholder-hint">拍照或从相册选择</text>
+        </view>
       </view>
       <view class="field">
         <text class="label">题目</text>
@@ -41,7 +51,7 @@
         </picker>
       </view>
       <button class="btn primary" @click="submit" :disabled="saving">保存错题</button>
-      <button class="btn default" @click="reset">换一张</button>
+      <button class="btn default" @click="manualMode ? goBack() : (previewImageUrl ? reset() : goBack())">{{ manualMode ? '取消' : (previewImageUrl ? '换一张' : '取消') }}</button>
     </view>
     <view class="tabbar-placeholder" />
     <TabBar current="" />
@@ -55,7 +65,7 @@ import TabBar from '@/components/TabBar.vue'
 import { API_BASE_URL } from '@/config.js'
 import { listSubjects, createSubject } from '@/api/subjects.js'
 import { listChapters } from '@/api/chapters.js'
-import { uploadAndAnalyzeImage, createQuestion, deleteQuestionImage } from '@/api/questions.js'
+import { uploadAndAnalyzeImage, uploadImage, createQuestion, deleteQuestionImage } from '@/api/questions.js'
 import { setSourcePath, getResultPath, clear } from '@/utils/crop-store.js'
 
 const result = ref(null)
@@ -69,15 +79,24 @@ const chapters = ref([])
 const saving = ref(false)
 /** 拍照创建模式：拍照后输入错题本名字，不存在则新建 */
 const createBookMode = ref(false)
+/** 手动添加模式：直接填写表单，无拍照识别 */
+const manualMode = ref(false)
 const bookName = ref('')
 
 const imageFullUrl = ref('')
 /** 本地裁剪图路径（识别界面上展示用户裁剪的那张图） */
 const croppedImagePath = ref('')
 watch(() => result.value?.url, (url) => {
-  if (url) imageFullUrl.value = url.startsWith('http') ? url : API_BASE_URL + url
+  if (url) imageFullUrl.value = url.startsWith('http') ? url : (API_BASE_URL.replace(/\/$/, '') + (url.startsWith('/') ? url : '/' + url))
 }, { immediate: true })
-const previewImageUrl = computed(() => croppedImagePath.value || imageFullUrl.value)
+/** 手动模式下 form.image_url 也参与预览（从相册/拍照添加的图） */
+const previewImageUrl = computed(() => {
+  if (croppedImagePath.value) return croppedImagePath.value
+  if (imageFullUrl.value) return imageFullUrl.value
+  const u = form.value?.image_url
+  if (u) return u.startsWith('http') ? u : (API_BASE_URL.replace(/\/$/, '') + (u.startsWith('/') ? u : '/' + u))
+  return ''
+})
 
 async function loadSubjects() {
   try {
@@ -240,6 +259,49 @@ function goBack() {
   uni.navigateBack()
 }
 
+/** 手动添加：选择图片（拍照/相册）后进入裁剪，裁剪后回本页上传 */
+function onAddImage() {
+  uni.showActionSheet({
+    itemList: ['拍照', '从相册选择'],
+    success: (res) => {
+      const sourceType = res.tapIndex === 0 ? ['camera'] : ['album']
+      uni.chooseImage({
+        count: 1,
+        sourceType,
+        success: (imgRes) => {
+          setSourcePath(imgRes.tempFilePaths[0])
+          uni.navigateTo({ url: '/pages/common/image-crop' })
+        }
+      })
+    }
+  })
+}
+
+/** 手动添加：更换原题图片 */
+function onReplaceImage() {
+  onAddImage()
+}
+
+/** 手动模式下从裁剪页返回：仅上传图片不识别，设置到表单 */
+async function useCroppedImageForManual(path) {
+  if (!path) return
+  uni.showLoading({ title: '上传中...' })
+  try {
+    const data = await uploadImage(path)
+    clear()
+    const url = data?.url || ''
+    form.value.image_url = url
+    result.value = result.value ? { ...result.value, url } : { url, content: '', analysis: '', answer: '', summary: '' }
+    imageFullUrl.value = url.startsWith('http') ? url : (API_BASE_URL.replace(/\/$/, '') + (url.startsWith('/') ? url : '/' + url))
+    uni.hideLoading()
+    uni.showToast({ title: '已添加', icon: 'success' })
+  } catch (e) {
+    uni.hideLoading()
+    uni.showToast({ title: e.message || '上传失败', icon: 'none' })
+    clear()
+  }
+}
+
 async function submit() {
   if (!form.value.content.trim()) {
     uni.showToast({ title: '请填写题目内容', icon: 'none' })
@@ -280,7 +342,7 @@ async function submit() {
       answer: form.value.answer || undefined,
       image_url: form.value.image_url || undefined,
       summary: form.value.summary || undefined,
-      source: 'photo'
+      source: manualMode.value ? 'manual' : 'photo'
     })
     uni.showToast({ title: '已保存' })
     setTimeout(() => uni.navigateBack(), 500)
@@ -293,7 +355,12 @@ async function submit() {
 
 onShow(() => {
   const croppedPath = getResultPath()
-  if (croppedPath) useCroppedImage(croppedPath)
+  if (!croppedPath) return
+  if (manualMode.value) {
+    useCroppedImageForManual(croppedPath)
+  } else {
+    useCroppedImage(croppedPath)
+  }
 })
 
 onMounted(async () => {
@@ -315,6 +382,13 @@ onMounted(async () => {
       subjectName.value = s.name
     }
   }
+  // 手动添加模式：直接展示空白表单，与拍照识别失败后手动输入形式一致
+  if (opts.mode === 'manual' && !getResultPath()) {
+    manualMode.value = true
+    uni.setNavigationBarTitle({ title: '手动添加' })
+    result.value = { url: '', content: '', analysis: '', answer: '', summary: '' }
+    form.value = { content: '', analysis: '', answer: '', image_url: '', summary: '', subject_id: 0, chapter_id: null }
+  }
 })
 </script>
 
@@ -328,8 +402,25 @@ onMounted(async () => {
 .tip { font-size: 24rpx; color: #999; margin-top: 16rpx; }
 .empty-section { text-align: center; padding: 48rpx 32rpx; }
 .empty-tip { display: block; font-size: 28rpx; color: #999; margin-bottom: 32rpx; }
-.preview { margin-bottom: 24rpx; }
-.img { width: 100%; border-radius: 8rpx; }
+.preview { margin-bottom: 24rpx; position: relative; }
+.preview .img { width: 100%; border-radius: 8rpx; display: block; }
+.preview-actions { position: absolute; right: 16rpx; top: 16rpx; }
+.preview-actions .link { font-size: 26rpx; color: #4A90E2; padding: 12rpx 24rpx; background: rgba(255,255,255,0.9); border-radius: 8rpx; }
+.image-add-field { margin-bottom: 24rpx; }
+.image-add-placeholder {
+  min-height: 200rpx;
+  border: 2rpx dashed #ddd;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  background: #fafafa;
+}
+.image-add-placeholder:active { background: #f0f0f0; }
+.placeholder-text { font-size: 30rpx; color: #666; }
+.placeholder-hint { font-size: 24rpx; color: #999; margin-top: 12rpx; }
 .field { margin-bottom: 24rpx; }
 .label { display: block; font-size: 28rpx; color: #666; margin-bottom: 8rpx; }
 .textarea {

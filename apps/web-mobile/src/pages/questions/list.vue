@@ -44,7 +44,7 @@
     </view>
     <view class="empty" v-else-if="!loading">
       <text class="empty-text">暂无错题本</text>
-      <text class="empty-hint">点击右下角 + 可选择「新建错题本」或「拍照添加题目」</text>
+      <text class="empty-hint">点击右下角 + 可选择「新建错题本」「拍照添加题目」或「手动添加题目」</text>
     </view>
 
     <view class="float-btn" @click="onAddTap">+</view>
@@ -253,13 +253,14 @@ function openCameraThenCrop() {
   })
 }
 
-/** 点击添加：可选新建错题本或拍照添加题目 */
+/** 点击添加：可选新建错题本、拍照添加题目 或 手动添加题目 */
 function onAddTap() {
   uni.showActionSheet({
-    itemList: ['新建错题本', '拍照添加题目'],
+    itemList: ['新建错题本', '拍照添加题目', '手动添加题目'],
     success: (res) => {
       if (res.tapIndex === 0) goCreateWithPhoto()
       else if (res.tapIndex === 1) openCameraThenCrop()
+      else if (res.tapIndex === 2) uni.navigateTo({ url: '/pages/questions/add?mode=manual' })
     }
   })
 }

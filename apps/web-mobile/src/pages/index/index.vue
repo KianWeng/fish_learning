@@ -123,15 +123,17 @@ function goQuestions(s) {
   })
 }
 
-/** 添加：新建错题本 或 拍照添加题目 */
+/** 添加：新建错题本、拍照添加题目 或 手动添加题目 */
 function onAddTap() {
   uni.showActionSheet({
-    itemList: ['新建错题本', '拍照添加题目'],
+    itemList: ['新建错题本', '拍照添加题目', '手动添加题目'],
     success: (res) => {
       if (res.tapIndex === 0) {
         uni.navigateTo({ url: '/pages/subjects/create-with-photo' })
       } else if (res.tapIndex === 1) {
         uni.reLaunch({ url: '/pages/questions/list?openCamera=1' })
+      } else if (res.tapIndex === 2) {
+        uni.navigateTo({ url: '/pages/questions/add?mode=manual' })
       }
     }
   })

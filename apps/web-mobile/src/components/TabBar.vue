@@ -63,7 +63,7 @@ function onAddTap() {
 
   if (isInChapters) {
     uni.showActionSheet({
-      itemList: ['新建章节目录', '拍照添加题目'],
+      itemList: ['新建章节目录', '拍照添加题目', '手动添加题目'],
       success: (res) => {
         if (res.tapIndex === 0) {
           if (subjectId) {
@@ -82,17 +82,23 @@ function onAddTap() {
               uni.navigateTo({ url: '/pages/common/image-crop' })
             }
           })
+        } else if (res.tapIndex === 2) {
+          uni.navigateTo({
+            url: `/pages/questions/add?mode=manual&subject_id=${subjectId}&subject_name=${encodeURIComponent(subjectName)}`
+          })
         }
       }
     })
   } else {
     uni.showActionSheet({
-      itemList: ['新建错题本', '拍照添加题目'],
+      itemList: ['新建错题本', '拍照添加题目', '手动添加题目'],
       success: (res) => {
         if (res.tapIndex === 0) {
           go('/pages/subjects/create-with-photo')
         } else if (res.tapIndex === 1) {
           go('/pages/questions/list?openCamera=1')
+        } else if (res.tapIndex === 2) {
+          uni.navigateTo({ url: '/pages/questions/add?mode=manual' })
         }
       }
     })

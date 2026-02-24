@@ -78,13 +78,14 @@ function onCourseFilterChange(e) {
   }
 }
 
-/** 添加：新建错题本(科目) 或 拍照添加题目 */
+/** 添加：新建错题本(科目)、拍照添加题目 或 手动添加题目 */
 function onAddTap() {
   uni.showActionSheet({
-    itemList: ['新建错题本', '拍照添加题目'],
+    itemList: ['新建错题本', '拍照添加题目', '手动添加题目'],
     success: (res) => {
       if (res.tapIndex === 0) goAdd()
       else if (res.tapIndex === 1) openCameraThenCrop()
+      else if (res.tapIndex === 2) uni.navigateTo({ url: '/pages/questions/add?mode=manual' })
     }
   })
 }

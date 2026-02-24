@@ -64,14 +64,21 @@ function goUngroupedQuestions() {
   })
 }
 
-/** 点击添加：新建章节目录 或 拍照添加题目 */
+/** 点击添加：新建章节目录、拍照添加题目 或 手动添加题目 */
 function onAddTap() {
   uni.showActionSheet({
-    itemList: ['新建章节目录', '拍照添加题目'],
+    itemList: ['新建章节目录', '拍照添加题目', '手动添加题目'],
     success: (res) => {
       if (res.tapIndex === 0) goAdd()
       else if (res.tapIndex === 1) openCameraThenCrop()
+      else if (res.tapIndex === 2) goManualAdd()
     }
+  })
+}
+
+function goManualAdd() {
+  uni.navigateTo({
+    url: `/pages/questions/add?mode=manual&subject_id=${subjectId.value}&subject_name=${encodeURIComponent(subjectName.value)}`
   })
 }
 
