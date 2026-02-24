@@ -1,7 +1,16 @@
 <template>
   <view class="page">
-    <view class="list-wrap" v-if="list.length">
+    <view class="list-wrap" v-if="list.length || ungroupedCount">
       <view class="list">
+        <!-- 未分组题目：直接添加的题目（无章节） -->
+        <view
+          v-if="ungroupedCount"
+          class="item item-ungrouped"
+          @click="goUngroupedQuestions"
+        >
+          <text class="name">未分组</text>
+          <text class="count">{{ ungroupedCount }} 道</text>
+        </view>
         <view class="item" v-for="c in list" :key="c.id" @click="goChapterQuestions(c)">
           <text class="name">{{ c.name }}</text>
           <view class="more-btn" @click.stop="openItemMenu(c)">
@@ -12,7 +21,7 @@
         </view>
       </view>
     </view>
-    <view class="empty" v-else-if="!loading">暂无章节，点击右下角 + 添加</view>
+    <view class="empty" v-else-if="!loading">暂无章节和题目，点击右下角 + 添加</view>
     <view class="empty" v-else>加载中...</view>
 
     <view class="float-btn" @click="onAddTap">+</view>
@@ -23,23 +32,36 @@
 import { ref, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { listChapters, deleteChapter } from '@/api/chapters.js'
+import { listQuestions } from '@/api/questions.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 
 const subjectId = ref(0)
 const subjectName = ref('')
 const list = ref([])
+const ungroupedCount = ref(0)
 const loading = ref(true)
 
 async function load() {
   if (!subjectId.value) return
   loading.value = true
   try {
-    list.value = await listChapters(subjectId.value)
+    const [chapters, ungrouped] = await Promise.all([
+      listChapters(subjectId.value),
+      listQuestions({ subject_id: subjectId.value, chapter_id: 0 }).catch(() => [])
+    ])
+    list.value = chapters
+    ungroupedCount.value = ungrouped?.length ?? 0
   } catch (e) {
     uni.showToast({ title: e.message || '加载失败', icon: 'none' })
   } finally {
     loading.value = false
   }
+}
+
+function goUngroupedQuestions() {
+  uni.navigateTo({
+    url: `/pages/chapters/questions?subject_id=${subjectId.value}&ungrouped_only=1&subject_name=${encodeURIComponent(subjectName.value)}&chapter_name=${encodeURIComponent('未分组')}`
+  })
 }
 
 /** 点击添加：新建章节目录 或 拍照添加题目 */
@@ -147,6 +169,7 @@ onShow(() => {
   border-radius: 16rpx;
 }
 .name { font-size: 30rpx; font-weight: 500; color: var(--text); flex: 1; }
+.item-ungrouped .count { font-size: 26rpx; color: var(--text-hint); margin-left: 12rpx; }
 .more-btn { width: 56rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; gap: 6rpx; flex-shrink: 0; }
 .dot { width: 8rpx; height: 8rpx; border-radius: 50%; background: var(--text-hint); }
 .empty { padding: 60rpx; text-align: center; color: var(--text-hint); font-size: 28rpx; }

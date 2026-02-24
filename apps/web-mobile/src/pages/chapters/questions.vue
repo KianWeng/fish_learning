@@ -27,7 +27,7 @@
       </view>
     </view>
     <view class="empty" v-else-if="!loading">
-      <text class="empty-text">该章节暂无错题</text>
+      <text class="empty-text">{{ ungroupedOnly ? '暂无未分组错题' : '该章节暂无错题' }}</text>
       <text class="empty-hint">点击右下角 + 添加错题</text>
     </view>
     <view class="empty" v-else>加载中...</view>
@@ -43,9 +43,10 @@ import { listQuestions, deleteQuestion } from '@/api/questions.js'
 import { setSourcePath, getResultPath } from '@/utils/crop-store.js'
 
 const subjectId = ref(0)
-const chapterId = ref(0)
+const chapterId = ref(null)
 const subjectName = ref('')
 const chapterName = ref('')
+const ungroupedOnly = ref(false)
 const list = ref([])
 const loading = ref(true)
 const openId = ref(null)
@@ -92,10 +93,14 @@ async function onDelete(q) {
 }
 
 async function load() {
-  if (!subjectId.value || !chapterId.value) return
+  if (!subjectId.value) return
+  if (!ungroupedOnly.value && (chapterId.value == null || chapterId.value === '')) return
   loading.value = true
   try {
-    list.value = await listQuestions({ subject_id: subjectId.value, chapter_id: chapterId.value })
+    const params = { subject_id: subjectId.value }
+    if (ungroupedOnly.value) params.ungrouped_only = true
+    else params.chapter_id = chapterId.value
+    list.value = await listQuestions(params)
   } catch (e) {
     uni.showToast({ title: e.message || '加载失败', icon: 'none' })
   } finally {
@@ -141,7 +146,8 @@ function goAdd() {
 }
 
 function addPageUrl() {
-  return `/pages/questions/add?subject_id=${subjectId.value}&chapter_id=${chapterId.value}&subject_name=${encodeURIComponent(subjectName.value)}&chapter_name=${encodeURIComponent(chapterName.value)}`
+  const base = `subject_id=${subjectId.value}&subject_name=${encodeURIComponent(subjectName.value)}`
+  return `/pages/questions/add?${base}${ungroupedOnly.value ? '' : `&chapter_id=${chapterId.value}&chapter_name=${encodeURIComponent(chapterName.value)}`}`
 }
 
 function initFromOptions(opts) {
@@ -151,10 +157,11 @@ function initFromOptions(opts) {
     opts = page.options || {}
   }
   subjectId.value = parseInt(opts.subject_id, 10) || 0
-  chapterId.value = parseInt(opts.chapter_id, 10) || 0
+  ungroupedOnly.value = opts.ungrouped_only === '1' || opts.ungrouped_only === true
+  chapterId.value = ungroupedOnly.value ? null : (parseInt(opts.chapter_id, 10) || 0)
   subjectName.value = opts.subject_name ? decodeURIComponent(opts.subject_name) : ''
-  chapterName.value = opts.chapter_name ? decodeURIComponent(opts.chapter_name) : ''
-  uni.setNavigationBarTitle({ title: chapterName.value || '' })
+  chapterName.value = ungroupedOnly.value ? '未分组' : (opts.chapter_name ? decodeURIComponent(opts.chapter_name) : '')
+  uni.setNavigationBarTitle({ title: chapterName.value || '题目' })
 }
 
 onLoad((opts) => {
