@@ -36,7 +36,8 @@
       </view>
     </view>
     <view class="tips">拖动裁剪框移动，拖拽四角调整大小</view>
-    <view class="actions">
+    <!-- 底部固定按钮，避免大图时被挤出视口 -->
+    <view class="actions-fixed">
       <button class="btn cancel" @click="cancel">取消</button>
       <button class="btn confirm" @click="confirm">使用此图</button>
     </view>
@@ -390,12 +391,18 @@ export default {
   font-size: 26rpx;
   text-align: center;
   margin-top: 24rpx;
+  padding-bottom: 120rpx; /* 为底部固定按钮留出空间，避免内容被遮挡 */
 }
-.actions {
+.actions-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   gap: 24rpx;
-  margin-top: 48rpx;
-  padding: 0 24rpx;
+  padding: 24rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  background: #111;
 }
 .btn {
   flex: 1;
