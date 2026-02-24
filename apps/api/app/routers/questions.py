@@ -23,12 +23,16 @@ async def list_questions(
         await require_subject_owner(subject_id, user_id, db)
         q = q.where(Question.subject_id == subject_id)
     if chapter_id is not None:
-        r = await db.execute(select(Chapter).where(Chapter.id == chapter_id))
-        c = r.scalar_one_or_none()
-        if not c:
-            raise HTTPException(status_code=404, detail="章节不存在")
-        await require_subject_owner(c.subject_id, user_id, db)
-        q = q.where(Question.chapter_id == chapter_id)
+        if chapter_id == 0:
+            # 未分组题目：chapter_id 为空
+            q = q.where(Question.chapter_id.is_(None))
+        else:
+            r = await db.execute(select(Chapter).where(Chapter.id == chapter_id))
+            c = r.scalar_one_or_none()
+            if not c:
+                raise HTTPException(status_code=404, detail="章节不存在")
+            await require_subject_owner(c.subject_id, user_id, db)
+            q = q.where(Question.chapter_id == chapter_id)
     q = q.order_by(Question.created_at.desc())
     r = await db.execute(q)
     rows = r.scalars().all()
