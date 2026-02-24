@@ -7,7 +7,7 @@
       </view>
       <view class="q-body">
         <view class="q-placeholder" v-if="!showAnswer">
-          <text class="q-title">复习题目</text>
+          <text class="q-title">每日一题</text>
           <text class="q-hint">点击查看答案或解析</text>
         </view>
         <view class="q-content" v-else>
