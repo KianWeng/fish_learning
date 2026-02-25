@@ -101,6 +101,12 @@ async def wechat_login(body: WechatLoginIn, db: AsyncSession = Depends(get_db)):
         user.nickname = body.nickname or None
     if body.avatar_url is not None:
         avatar_url = (body.avatar_url or "").strip()
+        # 若用户已有本地头像，先删除旧文件并释放配额，再保存新头像
+        old_avatar_url = (user.avatar_url or "").strip()
+        if old_avatar_url and old_avatar_url.startswith("/files/avatars/"):
+            deleted, freed = delete_file_by_url(old_avatar_url)
+            if deleted and freed:
+                user.storage_used_bytes = max(0, (user.storage_used_bytes or 0) - freed)
         # 若为登录临时目录 /files/avatars/login/xxx，迁移到用户个人目录
         path_from_url = urlparse(avatar_url).path if avatar_url.startswith("http") else avatar_url
         if "/files/avatars/login/" in path_from_url:
