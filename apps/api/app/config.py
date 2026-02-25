@@ -10,13 +10,22 @@ class Settings(BaseSettings):
     # 对外 API 基地址（可选，用于生成绝对 URL 时，如 https://api.example.com）
     api_base_url: str = ""
     openai_api_key: str = ""
-    openai_base_url: str = "https://api.openai.com/v1"
-    # Coze 工作流（优先于 OpenAI）：鉴权 PAT、工作流 ID、图片参数名、识图请求超时（秒）
+    openai_base_url: str = "https://api.openai.com"
+    # 识图/对话使用的模型名：OpenAI 用 gpt-4o-mini，DeepSeek 用 deepseek-chat 等
+    openai_vision_model: str = "deepseek-chat"
+    # 识图回退到 DeepSeek/OpenAI 时的系统 prompt（可选）；也可用 OPENAI_QUESTION_SYSTEM_PROMPT_FILE 指定文件路径
+    openai_question_system_prompt: str = ""
+    openai_question_system_prompt_file: str = ""
+    # 识图回退：豆包 Doubao（火山方舟 Ark），Coze 失败时使用
+    ark_api_key: str = ""
+    ark_base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
+    ark_vision_model: str = "doubao-seed-1-8-251228"
+    # Coze 工作流（优先）：鉴权 PAT、工作流 ID、图片参数名、识图请求超时（秒）
     coze_api_key: str = ""
     coze_base_url: str = "https://api.coze.cn"
     coze_workflow_id: str = ""
     coze_image_parameter: str = "image"
-    coze_workflow_timeout: int = 240  # 识图工作流 HTTP 超时，Coze 处理慢时可调大（如 180、240）
+    coze_workflow_timeout: int = 60  # 识图工作流 HTTP 超时，Coze 处理慢时可调大（如 180、240）
     # 学习报告 Coze 工作流：输入为 JSON 字符串（见文档 COZE_REPORT_WORKFLOW.md）
     coze_report_workflow_id: str = ""
     coze_report_workflow_parameter: str = "input"
