@@ -18,7 +18,7 @@ class User(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     storage_limit_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=DEFAULT_STORAGE_LIMIT_BYTES)
     storage_used_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    points: Mapped[int] = mapped_column(Integer, nullable=False, default=200)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     subjects = relationship("Subject", back_populates="user", cascade="all, delete-orphan")
