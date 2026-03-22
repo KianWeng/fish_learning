@@ -63,7 +63,11 @@ npm run dev:mp-weixin
 | `COZE_WORKFLOW_ID` | Coze 工作流 ID |
 | `COZE_IMAGE_PARAMETER` | 工作流中图片输入参数名，默认 `image` |
 | `OPENAI_API_KEY` | 大模型 API Key（未配置 Coze 时或 PDF 解析使用） |
-| `OPENAI_BASE_URL` | 可选，大模型 base URL |
+| `DASHSCOPE_API_KEY` | 可选，与 `OPENAI_API_KEY` 二选一：阿里百炼 DashScope Key，会合并为同一套 OpenAI 兼容调用 |
+| `OPENAI_BASE_URL` | 大模型 OpenAI 兼容 base URL，默认 `https://coding.dashscope.aliyuncs.com/v1`（百炼） |
+| `OPENAI_VISION_MODEL` | 识图多模态模型，默认 `qwen-vl-plus` |
+| `OPENAI_CHAT_MODEL` | 纯文本任务（报告、PDF 解析页），默认 `qwen-plus` |
+| `VISION_IMAGE_PRIORITY` | 识图顺序：`bailian`（默认，百炼/OpenAI 兼容先）或 `coze`（Coze 先） |
 | `STORAGE_LOCAL_PATH` | 本地存储路径，默认 `./uploads`（其下分 `avatars/`、`questions/`、`pdfs/`） |
 | `FORCE_HTTPS` | 设为 `true` 时，若请求为 http（如 `X-Forwarded-Proto=http`）则 301 重定向到 https |
 | `API_BASE_URL` | 可选，对外 API 基地址（用于生成绝对 URL） |

@@ -43,6 +43,9 @@ apps/web-mobile/dist/
 .DS_Store
 Thumbs.db
 
+# 后台进程日志
+nohup.out
+
 # 测试与覆盖率
 .coverage
 htmlcov/

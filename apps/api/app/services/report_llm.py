@@ -99,8 +99,9 @@ async def _generate_via_openai(stats: dict, subject_name: str, input_json: str) 
 
     try:
         client = _get_openai_client()
+        chat_model = getattr(settings, "openai_chat_model", None) or "qwen-plus"
         resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=chat_model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=2048,
         )

@@ -35,8 +35,9 @@ async def parse_page_to_question(page_text: str) -> dict:
 {"content":"题目全文（可含多题）","analysis":"解析","answer":"答案"}
 """
     try:
+        chat_model = getattr(settings, "openai_chat_model", None) or "qwen-plus"
         resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=chat_model,
             messages=[{"role": "user", "content": prompt + "\n\n" + page_text[:4000]}],
             max_tokens=2048,
         )

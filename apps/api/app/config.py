@@ -1,3 +1,4 @@
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -10,9 +11,14 @@ class Settings(BaseSettings):
     # 对外 API 基地址（可选，用于生成绝对 URL 时，如 https://api.example.com）
     api_base_url: str = ""
     openai_api_key: str = ""
-    openai_base_url: str = "https://api.openai.com"
-    # 识图/对话使用的模型名：OpenAI 用 gpt-4o-mini，DeepSeek 用 deepseek-chat 等
-    openai_vision_model: str = "deepseek-chat"
+    # 与 OPENAI_API_KEY 二选一：阿里百炼 DashScope API Key（写入后等价于 OPENAI_API_KEY）
+    dashscope_api_key: str = Field(default="", validation_alias="DASHSCOPE_API_KEY")
+    # 默认：阿里百炼 OpenAI 兼容接口 https://help.aliyun.com/zh/model-studio/developer-reference/use-qwen-by-calling-api
+    openai_base_url: str = "https://coding.dashscope.aliyuncs.com/v1"
+    # 识图（多模态）：百炼常用 qwen-vl-plus；OpenAI 可用 gpt-4o-mini；DeepSeek 用 deepseek-chat 等
+    openai_vision_model: str = "kimi-k2.5"
+    # 纯文本（学习报告、PDF 页解析等）：百炼常用 qwen-plus；OpenAI 可用 gpt-4o-mini
+    openai_chat_model: str = "glm-5"
     # 识图回退到 DeepSeek/OpenAI 时的系统 prompt（可选）；也可用 OPENAI_QUESTION_SYSTEM_PROMPT_FILE 指定文件路径
     openai_question_system_prompt: str = ""
     openai_question_system_prompt_file: str = ""
@@ -20,7 +26,9 @@ class Settings(BaseSettings):
     ark_api_key: str = ""
     ark_base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
     ark_vision_model: str = "doubao-seed-1-8-251228"
-    # Coze 工作流（优先）：鉴权 PAT、工作流 ID、图片参数名、识图请求超时（秒）
+    # 识图供应商优先级（OPENAI_* 与 Coze 均配置时）：bailian=百炼 OpenAI 兼容先；coze=Coze 工作流先
+    vision_image_priority: str = "bailian"
+    # Coze 工作流：鉴权 PAT、工作流 ID、图片参数名、识图请求超时（秒）
     coze_api_key: str = ""
     coze_base_url: str = "https://api.coze.cn"
     coze_workflow_id: str = ""
@@ -53,6 +61,12 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         extra = "ignore"
+
+    @model_validator(mode="after")
+    def _merge_dashscope_api_key(self) -> "Settings":
+        if not (self.openai_api_key or "").strip() and (self.dashscope_api_key or "").strip():
+            object.__setattr__(self, "openai_api_key", self.dashscope_api_key.strip())
+        return self
 
 
 settings = Settings()

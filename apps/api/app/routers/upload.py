@@ -81,7 +81,7 @@ async def upload_and_analyze(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """上传错题图片并分析（Coze 工作流优先，否则 OpenAI），占用用户存储配额，返回图片 URL 与题目/解析/答案。"""
+    """上传错题图片并分析（默认百炼 OpenAI 兼容优先，可配置 Coze 优先），占用用户存储配额，返回图片 URL 与题目/解析/答案。"""
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")

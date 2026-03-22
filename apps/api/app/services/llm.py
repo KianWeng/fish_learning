@@ -1,5 +1,6 @@
 """
-错题图片分析：优先使用 Coze 工作流，失败时回退到豆包 Doubao（火山方舟 Ark）或 OpenAI。
+错题图片分析：默认优先阿里百炼（OPENAI_* OpenAI 兼容接口），可改为 Coze 优先；
+失败时回退豆包 Doubao（火山方舟 Ark）或其它已配置通道。
 """
 import base64
 import json
@@ -33,8 +34,8 @@ def _use_coze() -> bool:
     return bool(settings.coze_api_key and settings.coze_workflow_id)
 
 
-def _is_coze_error_result(result: dict) -> bool:
-    """Coze 返回的是否为错误（超时、请求失败等），用于决定是否回退豆包/OpenAI。"""
+def _is_vision_failure_result(result: dict) -> bool:
+    """识图返回是否视为失败（超时、占位错误、需回退到其它通道）。"""
     content = (result.get("content") or "").strip()
     if not content:
         return True
@@ -63,28 +64,63 @@ def _get_question_system_prompt() -> str:
 async def analyze_question_image(image_base64: str = "", image_bytes: bytes | None = None) -> dict:
     """
     根据错题图片分析出题目、解析、答案。
-    优先走 Coze 工作流；失败则回退到 DeepSeek/OpenAI（需配置 OPENAI_API_KEY）。
+    默认优先百炼（OPENAI_*）；设置 VISION_IMAGE_PRIORITY=coze 时优先 Coze。
     返回 {"content": str, "analysis": str, "answer": str, "summary": str}
     """
+    if image_bytes and not image_base64:
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    priority = (getattr(settings, "vision_image_priority", None) or "bailian").strip().lower()
+    if priority not in ("bailian", "coze"):
+        priority = "bailian"
+
+    # 1) 百炼 / OpenAI 兼容接口优先（默认，需配置 OPENAI_API_KEY 或 DASHSCOPE_API_KEY）
+    if priority == "bailian" and settings.openai_api_key and image_base64:
+        logger.info("[识图] 优先：百炼 / OpenAI 兼容接口")
+        print("[识图] 优先：百炼 / OpenAI 兼容接口")
+        openai_first = await _analyze_via_openai(image_base64)
+        if not _is_vision_failure_result(openai_first):
+            return openai_first
+        logger.info("[识图] 百炼调用无效或失败，回退 Coze / 方舟等")
+        print("[识图] 百炼调用无效或失败，回退 Coze / 方舟等")
+    elif priority == "bailian" and not settings.openai_api_key:
+        logger.warning(
+            "[识图] 未配置 OPENAI_API_KEY 或 DASHSCOPE_API_KEY，无法调用百炼；"
+            "将走下方回退（若已配置 ARK 则先试方舟，否则 Coze）"
+        )
+        print(
+            "[识图] 未配置 OPENAI_API_KEY 或 DASHSCOPE_API_KEY，无法优先百炼；"
+            "请至少在 .env 中填写其一后重启服务"
+        )
+
+    # 1b) 百炼未配置 Key 时：VISION_IMAGE_PRIORITY=bailian 下优先方舟，再 Coze（避免无 Key 仍只打 Coze）
+    if priority == "bailian" and not settings.openai_api_key and _use_ark() and image_base64:
+        logger.info("[识图] 百炼未配置 Key，改用豆包 Ark")
+        print("[识图] 百炼未配置 Key，改用豆包 Ark")
+        ark_first = await _analyze_via_ark(image_base64)
+        if not _is_vision_failure_result(ark_first):
+            return ark_first
+        logger.info("[识图] 方舟调用无效或失败，继续尝试 Coze 等")
+        print("[识图] 方舟调用无效或失败，继续尝试 Coze 等")
+
+    # 2) Coze 工作流（coze 优先时入口；或百炼失败后的回退）
     if _use_coze() and image_bytes:
         from app.services.coze_workflow import analyze_question_image_via_coze
         coze_result = await analyze_question_image_via_coze(image_bytes, "image.jpg")
-        if _is_coze_error_result(coze_result):
-            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-            if _use_ark():
-                logger.info("[识图] Coze 失败，回退到豆包 Doubao (Ark)")
-                print("[识图] Coze 失败，回退到豆包 Doubao (Ark)")
-                return await _analyze_via_ark(image_b64)
-            if settings.openai_api_key:
-                logger.info("[识图] Coze 失败，回退到 OpenAI")
-                print("[识图] Coze 失败，回退到 OpenAI")
-                return await _analyze_via_openai(image_b64)
-            logger.warning("[识图] Coze 失败但未配置 ARK_API_KEY 或 OPENAI_API_KEY，无法回退")
-            print("[识图] Coze 失败但未配置 ARK_API_KEY 或 OPENAI_API_KEY，无法回退")
-        return coze_result
+        if not _is_vision_failure_result(coze_result):
+            return coze_result
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        if _use_ark():
+            logger.info("[识图] Coze 失败，回退到豆包 Doubao (Ark)")
+            print("[识图] Coze 失败，回退到豆包 Doubao (Ark)")
+            return await _analyze_via_ark(image_b64)
+        if settings.openai_api_key:
+            logger.info("[识图] Coze 失败，回退到 OpenAI 兼容接口")
+            print("[识图] Coze 失败，回退到 OpenAI 兼容接口")
+            return await _analyze_via_openai(image_b64)
+        logger.warning("[识图] Coze 失败但未配置 ARK_API_KEY 或 OPENAI_API_KEY，无法回退")
+        print("[识图] Coze 失败但未配置 ARK_API_KEY 或 OPENAI_API_KEY，无法回退")
 
-    if image_bytes and not image_base64:
-        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     if not image_base64 and not _use_ark() and not settings.openai_api_key:
         return {
             "content": "[未配置] 请配置 Coze（COZE_*）或 豆包（ARK_API_KEY）或 OpenAI（OPENAI_API_KEY）后重试。",
@@ -244,7 +280,7 @@ async def _analyze_via_openai(image_base64: str) -> dict:
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
             ],
         })
-    model = getattr(settings, "openai_vision_model", None) or "gpt-4o-mini"
+    model = getattr(settings, "openai_vision_model", None) or "qwen-vl-plus"
     try:
         logger.info("[识图 DeepSeek/OpenAI] 发起请求 model=%s base_url=%s", model, getattr(settings, "openai_base_url", ""))
         print(f"[识图 DeepSeek/OpenAI] 发起请求 model={model}")

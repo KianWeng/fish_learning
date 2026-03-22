@@ -14,7 +14,7 @@ cd apps/api
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-# 可选：复制 .env.example 为 .env 并修改
+# 复制 .env.example 为 .env：拍照识图默认优先百炼，请在 .env 中填写 OPENAI_API_KEY 或 DASHSCOPE_API_KEY（二者勿留空），否则只会走方舟/Coze 回退链路
 python -m alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```

@@ -86,7 +86,7 @@ async def main():
 
     base_url = (settings.openai_base_url or "").lower()
     is_deepseek = "deepseek" in base_url
-    model = getattr(settings, "openai_vision_model", None) or "gpt-4o-mini"
+    model = getattr(settings, "openai_vision_model", None) or "qwen-vl-plus"
     data_url = image_data_url(path)
     system_prompt = _get_question_system_prompt()
     user_prompt = "请分析该错题图片，严格按系统提示中的要求只输出一个标准 JSON 对象，无任何其他内容。"
@@ -119,7 +119,7 @@ async def main():
         from openai import AsyncOpenAI
         client = AsyncOpenAI(
             api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url or "https://api.openai.com/v1",
+            base_url=settings.openai_base_url or "https://coding.dashscope.aliyuncs.com/v1",
         )
         resp = await client.chat.completions.create(
             model=model,
